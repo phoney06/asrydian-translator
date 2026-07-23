@@ -45,6 +45,62 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 .hidden{display:none}
 .footer{margin-top:20px;color:var(--muted);font-size:.9rem;text-align:center}
 .warning{border-left:4px solid var(--warn);padding-left:12px}
+
+.phrase-box{
+  margin-top:18px;
+  background:#0c1428;
+  border:2px solid var(--border);
+  border-radius:18px;
+  padding:22px;
+  min-height:150px;
+}
+.phrase-title{
+  font-size:1rem;
+  font-weight:800;
+  margin-bottom:12px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.phrase-output{
+  font-size:clamp(1.8rem,4vw,2.7rem);
+  line-height:1.35;
+  color:var(--accent2);
+  font-weight:800;
+  word-break:break-word;
+  padding:8px 0 12px;
+}
+.phrase-note{
+  color:var(--muted);
+  font-size:.95rem;
+  margin-top:8px;
+  line-height:1.55;
+  border-top:1px solid var(--border);
+  padding-top:12px;
+}
+.unknown-word{
+  color:#ff3b4f !important;
+  background:rgba(255,59,79,.18);
+  border:1px solid rgba(255,59,79,.8);
+  border-radius:7px;
+  padding:1px 5px;
+  text-decoration:none;
+  display:inline-block;
+}
+.known-word{
+  color:var(--accent2);
+}
+.parts-heading{
+  margin:20px 0 8px;
+  font-size:1rem;
+  color:var(--text);
+}
+.part-index{
+  color:var(--muted);
+  font-size:.8rem;
+  margin-bottom:5px;
+}
+
 @media(max-width:760px){
   .search-grid{grid-template-columns:1fr}
   .swap{transform:rotate(90deg);justify-self:center}
@@ -107,7 +163,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <section id="numbers" class="tabpage panel hidden"></section>
 <section id="review" class="tabpage panel hidden"></section>
 
-<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet, with exact phrases, combined translation, and individual word entries.</div>
+<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet. Unknown words remain unchanged and are highlighted red.</div>
 </div>
 
 <script>
@@ -188,12 +244,12 @@ function buildLiteralPhrase(text, source, target){
     const found = exactEntryFor(token, source);
     if(found && found[target]){
       const translated = preserveCase(token, String(found[target]));
-      rendered.push(escapeHtml(translated));
+      rendered.push(`<span class="known-word">${escapeHtml(translated)}</span>`);
       plain.push(translated);
     } else {
       unknown.push(token);
-      rendered.push(`<span class="unknown-word">${escapeHtml(token)}</span>`);
-      plain.push(`[${token}]`);
+      rendered.push(`<span class="unknown-word" style="color:#ff3b4f;background:rgba(255,59,79,.18);border:1px solid rgba(255,59,79,.8);border-radius:7px;padding:1px 5px;display:inline-block;">${escapeHtml(token)}</span>`);
+      plain.push(token);
     }
   }
   return {html: rendered.join(""), plain: plain.join(""), unknown, exact:false};
@@ -215,11 +271,11 @@ function renderPhraseBuilder(q, source, target){
   if(built.exact){
     phraseNote.textContent = "Exact phrase found in the dictionary.";
   } else if(built.unknown.length){
-    phraseNote.textContent = `Literal word-by-word translation. Unknown: ${[...new Set(built.unknown)].join(", ")}. Word order and grammar may still need adjustment.`;
+    phraseNote.textContent = `Literal word-by-word translation. Words shown in red are unknown and remain in the original language: ${[...new Set(built.unknown)].join(", ")}. Word order and grammar may still need adjustment.`;
   } else {
     phraseNote.textContent = "Literal word-by-word translation. Word order and grammar may still need adjustment.";
   }
-  translationBox.value = built.unknown.length ? "" : built.plain;
+  translationBox.value = built.plain || "";
 }
 
 
