@@ -107,7 +107,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <section id="numbers" class="tabpage panel hidden"></section>
 <section id="review" class="tabpage panel hidden"></section>
 
-<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet, with exact-phrase and word-by-word translation.</div>
+<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet, with exact phrases, combined translation, and individual word entries.</div>
 </div>
 
 <script>
@@ -222,6 +222,57 @@ function renderPhraseBuilder(q, source, target){
   translationBox.value = built.unknown.length ? "" : built.plain;
 }
 
+
+function getPhraseParts(text, source, target){
+  const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+/gu) || [];
+  return tokens.map((token, index) => {
+    const entry = exactEntryFor(token, source);
+    return {
+      token,
+      index,
+      entry,
+      translation: entry ? (entry[target] || "") : ""
+    };
+  });
+}
+
+function renderPhraseParts(text, source, target){
+  const parts = getPhraseParts(text, source, target);
+  if(parts.length < 2) return "";
+
+  return `
+    <div class="parts-heading"><strong>Individual dictionary entries</strong></div>
+    ${parts.map((part, i) => {
+      if(!part.entry){
+        return `
+          <div class="card">
+            <div>
+              <div class="part-index">Word ${i+1}</div>
+              <h3>${escapeHtml(part.token)}</h3>
+              <div class="translation" style="color:var(--warn)">No dictionary entry</div>
+            </div>
+          </div>`;
+      }
+      const x = part.entry;
+      return `
+        <div class="card">
+          <div>
+            <div class="part-index">Word ${i+1}</div>
+            <h3>${escapeHtml(x[source] || part.token)}</h3>
+            <div class="translation">${escapeHtml(x[target] || "Translation missing")}</div>
+            <div class="meta">
+              ${x["Grammar / Form"] ? `<div>${escapeHtml(x["Grammar / Form"])}</div>` : ""}
+              ${x.Notes ? `<div>${escapeHtml(x.Notes)}</div>` : ""}
+              ${x.Root ? `<div>Root: ${escapeHtml(x.Root)}</div>` : ""}
+            </div>
+            ${x.Category ? `<span class="tag">${escapeHtml(x.Category)}</span>` : ""}
+          </div>
+          <button class="copy-btn" onclick='copyText(${JSON.stringify(x[target] || "")})'>Copy</button>
+        </div>`;
+    }).join("")}
+  `;
+}
+
 function render(){
   const q=query.value;
   const [source,target] = fieldNames();
@@ -233,7 +284,9 @@ function render(){
   renderPhraseBuilder(q, source, target);
   stats.textContent = q ? `${filtered.length} result${filtered.length===1?"":"s"} shown` : `Browse all ${dictionary.length} live entries`;
   if(!filtered.length){
-    results.innerHTML='<div class="empty">No exact dictionary entry found. The combined translation above is built word by word.</div>'; return;
+    const partsHtml = renderPhraseParts(q, source, target);
+    results.innerHTML = partsHtml || '<div class="empty">No matching translation found.</div>';
+    return;
   }
   results.innerHTML=filtered.map(x=>`
     <div class="card">
@@ -249,6 +302,8 @@ function render(){
       </div>
       <button class="copy-btn" onclick='copyText(${JSON.stringify(x[target]||"")})'>Copy</button>
     </div>`).join("");
+  const partsHtml = renderPhraseParts(q, source, target);
+  if(partsHtml) results.innerHTML += partsHtml;
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
 function copyText(t){navigator.clipboard?.writeText(t);}
