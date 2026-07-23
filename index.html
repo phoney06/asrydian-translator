@@ -92,6 +92,11 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     </select>
     <button class="clear" id="clear">Clear</button>
   </div>
+  <div id="phraseBuilder" class="phrase-box hidden">
+    <div class="phrase-title">Combined translation</div>
+    <div id="phraseOutput" class="phrase-output"></div>
+    <div id="phraseNote" class="phrase-note"></div>
+  </div>
   <div class="stats" id="stats"></div>
   <div class="results" id="results"></div>
 </section>
@@ -102,7 +107,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <section id="numbers" class="tabpage panel hidden"></section>
 <section id="review" class="tabpage panel hidden"></section>
 
-<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet. Add a row there, then refresh this page.</div>
+<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet, with exact-phrase and word-by-word translation.</div>
 </div>
 
 <script>
@@ -120,6 +125,9 @@ const translationBox = document.getElementById("translationBox");
 const results = document.getElementById("results");
 const category = document.getElementById("category");
 const stats = document.getElementById("stats");
+const phraseBuilder = document.getElementById("phraseBuilder");
+const phraseOutput = document.getElementById("phraseOutput");
+const phraseNote = document.getElementById("phraseNote");
 
 function populateCategories(){
   category.innerHTML = '<option value="">All categories</option>';
@@ -142,6 +150,78 @@ function fieldNames(){
    ? ["English","Asrydian / Asmonian","English","Asrydian"]
    : ["Asrydian / Asmonian","English","Asrydian","English"];
 }
+
+function exactEntryFor(text, source){
+  const q = norm(text).replace(/[.!?]+$/,"");
+  return dictionary.find(x => norm(x[source]).replace(/[.!?]+$/,"") === q);
+}
+
+function preserveCase(original, translated){
+  if(!translated) return translated;
+  if(original === original.toUpperCase() && /[A-Z]/i.test(original)) return translated.toUpperCase();
+  if(original[0] && original[0] === original[0].toUpperCase()) {
+    return translated.charAt(0).toUpperCase() + translated.slice(1);
+  }
+  return translated;
+}
+
+function buildLiteralPhrase(text, source, target){
+  const exact = exactEntryFor(text, source);
+  if(exact) return {
+    html: escapeHtml(exact[target] || ""),
+    plain: exact[target] || "",
+    unknown: [],
+    exact: true
+  };
+
+  const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
+  const unknown = [];
+  const rendered = [];
+  const plain = [];
+
+  for(const token of tokens){
+    if(/^\s+$/.test(token) || /^[^\p{L}\p{M}0-9]+$/u.test(token)){
+      rendered.push(escapeHtml(token));
+      plain.push(token);
+      continue;
+    }
+    const found = exactEntryFor(token, source);
+    if(found && found[target]){
+      const translated = preserveCase(token, String(found[target]));
+      rendered.push(escapeHtml(translated));
+      plain.push(translated);
+    } else {
+      unknown.push(token);
+      rendered.push(`<span class="unknown-word">${escapeHtml(token)}</span>`);
+      plain.push(`[${token}]`);
+    }
+  }
+  return {html: rendered.join(""), plain: plain.join(""), unknown, exact:false};
+}
+
+function renderPhraseBuilder(q, source, target){
+  const trimmed = String(q||"").trim();
+  const wordCount = (trimmed.match(/[\p{L}\p{M}’']+|[0-9]+/gu) || []).length;
+  if(wordCount < 2){
+    phraseBuilder.classList.add("hidden");
+    phraseOutput.innerHTML = "";
+    phraseNote.textContent = "";
+    return;
+  }
+
+  const built = buildLiteralPhrase(trimmed, source, target);
+  phraseBuilder.classList.remove("hidden");
+  phraseOutput.innerHTML = built.html || "No translation";
+  if(built.exact){
+    phraseNote.textContent = "Exact phrase found in the dictionary.";
+  } else if(built.unknown.length){
+    phraseNote.textContent = `Literal word-by-word translation. Unknown: ${[...new Set(built.unknown)].join(", ")}. Word order and grammar may still need adjustment.`;
+  } else {
+    phraseNote.textContent = "Literal word-by-word translation. Word order and grammar may still need adjustment.";
+  }
+  translationBox.value = built.unknown.length ? "" : built.plain;
+}
+
 function render(){
   const q=query.value;
   const [source,target] = fieldNames();
@@ -150,9 +230,10 @@ function render(){
   let filtered=dictionary.filter(x => (!cat || x.Category===cat) && matches(x[source],q,mode));
   filtered=filtered.slice(0,100);
   translationBox.value = filtered.length===1 ? filtered[0][target] : "";
+  renderPhraseBuilder(q, source, target);
   stats.textContent = q ? `${filtered.length} result${filtered.length===1?"":"s"} shown` : `Browse all ${dictionary.length} live entries`;
   if(!filtered.length){
-    results.innerHTML='<div class="empty">No matching translation found.</div>'; return;
+    results.innerHTML='<div class="empty">No exact dictionary entry found. The combined translation above is built word by word.</div>'; return;
   }
   results.innerHTML=filtered.map(x=>`
     <div class="card">
@@ -174,7 +255,7 @@ function copyText(t){navigator.clipboard?.writeText(t);}
 query.addEventListener("input",render);
 category.addEventListener("change",render);
 document.getElementById("matchMode").addEventListener("change",render);
-document.getElementById("clear").addEventListener("click",()=>{query.value="";translationBox.value="";render();query.focus();});
+document.getElementById("clear").addEventListener("click",()=>{query.value="";translationBox.value="";phraseBuilder.classList.add("hidden");render();query.focus();});
 document.getElementById("swap").addEventListener("click",()=>{
   direction=direction==="en-as"?"as-en":"en-as";
   document.getElementById("leftLabel").textContent=direction==="en-as"?"English":"Asrydian";
