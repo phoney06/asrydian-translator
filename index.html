@@ -213,9 +213,23 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet. Only valid pronunciation values from column E are displayed.</div>
 </div>
 
+
+<section id="pronunciationRulesPanel" class="ref-card" style="margin-top:24px;">
+  <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+    <h2 style="margin:0;">Pronunciation Rules</h2>
+    <span id="pronunciationRulesStatus" class="badge">Loading pronunciation rules…</span>
+  </div>
+  <p class="muted" style="margin:10px 0 14px;">
+    Loaded live from the Pronunciation tab in the Google Sheet.
+  </p>
+  <div id="pronunciationRulesList"></div>
+</section>
+
 <script>
 let dictionary = [];
+let pronunciationRules = [];
 const LIVE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE/gviz/tq?tqx=out:csv&sheet=MASTER%20DICTIONARY";
+const PRONUNCIATION_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE/gviz/tq?tqx=out:csv&sheet=Pronunciation";
 const grammarData = [{"Rule": "Plural ending", "English Form": "English plural / -s", "Asrydian Form": "-t", "Explanation": "A final T marks a plural word.", "Example": "Hammer → Hammers: Myolthde → Myolthdet"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to the word.", "Example": "Do → Doing: Lul → Luleif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
 const pronunciationData = [{"Written Pattern": "S at the beginning or end of a word", "Sound": "S", "Rule": "Pronounced as a normal S sound."}, {"Written Pattern": "S inside a word", "Sound": "Sh", "Rule": "Pronounced as an SH sound."}, {"Written Pattern": "K next to E", "Sound": "Ch", "Rule": "The pair makes a CH sound."}, {"Written Pattern": "K next to L", "Sound": "C", "Rule": "The pair makes a C sound."}, {"Written Pattern": "’e", "Sound": "Silent", "Rule": "The ’e sequence is silent."}, {"Written Pattern": "ľ", "Sound": "Silent", "Rule": "The letter ľ is silent."}, {"Written Pattern": "G", "Sound": "Guh or Juh", "Rule": "The speaker may choose either pronunciation."}];
 const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe gorlsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
@@ -257,20 +271,129 @@ function fieldNames(){
 }
 
 
+
+function applyPronunciationRules(word){
+  const original = String(word || "").trim();
+  if(!original) return "";
+
+  // Always return a complete pronunciation attempt. Rules modify the parts
+  // they govern; letters without a special rule stay visible.
+  let result = original;
+
+  if(!pronunciationRules.length) return result;
+
+  const getRule = test => pronunciationRules.find(rule => test(
+    String(rule.pattern || "").trim().toLowerCase(),
+    String(rule.rule || "").trim().toLowerCase()
+  ));
+
+  const soundOf = rule => String(rule?.sound || "").trim();
+
+  // Apply multi-letter and apostrophe rules before single-letter rules.
+  const thRule = getRule((p, r) => p === "th" || r.includes("th is pronounced"));
+  if(thRule && soundOf(thRule)){
+    result = result.replace(/th/gi, soundOf(thRule));
+  }
+
+  const silentERule = getRule((p, r) =>
+    p === "’e" || p === "'e" || r.includes("’e sequence is silent") || r.includes("'e sequence is silent")
+  );
+  if(silentERule){
+    result = result.replace(/[’']e/gi, "");
+  }
+
+  const silentRRule = getRule((p, r) =>
+    p === "’r" || p === "'r" || r.includes("letter r is silent")
+  );
+  if(silentRRule){
+    result = result.replace(/[’']r/gi, "");
+  }
+
+  const kBeforeIRule = getRule((p, r) =>
+    p.includes("k + i") || r.includes("k is fully pronounced before i")
+  );
+  if(kBeforeIRule && soundOf(kBeforeIRule)){
+    result = result.replace(/k(?=i|i[’'])/gi, soundOf(kBeforeIRule));
+  }
+
+  const kBeforeERule = getRule((p, r) =>
+    p.includes("k + e") || r.includes("k changes to a ch sound before e")
+  );
+  if(kBeforeERule && soundOf(kBeforeERule)){
+    result = result.replace(/k(?=e|[’']e)/gi, soundOf(kBeforeERule));
+  }
+
+  const kNextERule = getRule((p, r) =>
+    p.includes("k next to e") || r.includes("pair makes a ch sound")
+  );
+  if(kNextERule && soundOf(kNextERule)){
+    const sound = soundOf(kNextERule);
+    result = result
+      .replace(/ke/gi, match => preserveRuleCase(match, sound + "e"))
+      .replace(/ek/gi, match => preserveRuleCase(match, "e" + sound));
+  }
+
+  const kNextIRule = getRule((p, r) =>
+    p.includes("k next to i") || r.includes("pair makes a c sound")
+  );
+  if(kNextIRule && soundOf(kNextIRule)){
+    const sound = soundOf(kNextIRule);
+    result = result
+      .replace(/ki/gi, match => preserveRuleCase(match, sound + "i"))
+      .replace(/ik/gi, match => preserveRuleCase(match, "i" + sound));
+  }
+
+  // S inside a word becomes SH. Beginning/end S remains normal S.
+  const insideSRule = getRule((p, r) =>
+    p.includes("s inside a word") || r.includes("pronounced as an sh sound")
+  );
+  if(insideSRule && soundOf(insideSRule) && result.length > 2){
+    const first = result.slice(0, 1);
+    const middle = result.slice(1, -1).replace(/s/gi, soundOf(insideSRule));
+    const last = result.slice(-1);
+    result = first + middle + last;
+  }
+
+  // G has a speaker-choice rule. Keep G visible and annotate the choice
+  // instead of silently choosing one pronunciation.
+  const gRule = getRule((p, r) =>
+    p === "g" || r.includes("speaker may choose either pronunciation")
+  );
+  if(gRule && /g/i.test(result)){
+    const choice = soundOf(gRule);
+    if(choice){
+      result = result.replace(/g/gi, match => `${match}(${choice})`);
+    }
+  }
+
+  return result;
+}
+
+function preserveRuleCase(original, replacement){
+  if(original === original.toUpperCase()) return replacement.toUpperCase();
+  if(original[0] === original[0].toUpperCase()){
+    return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+function loadPronunciationRules(rows){
+  if(!rows || rows.length<2){ pronunciationRules=[]; return; }
+  const headers=rows[0].map(h=>String(h||"").trim().toLowerCase());
+  const pi=headers.findIndex(h=>h.includes("written pattern"));
+  const si=headers.findIndex(h=>h.includes("sound"));
+  const ri=headers.findIndex(h=>h.includes("rule"));
+  const ei=headers.findIndex(h=>h.includes("example"));
+  pronunciationRules=rows.slice(1).map(row=>({pattern:pi>=0?row[pi]:row[0],sound:si>=0?row[si]:row[1],rule:ri>=0?row[ri]:row[2],example:ei>=0?row[ei]:row[3]})).filter(r=>String(r.pattern||"").trim()&&String(r.sound||"").trim());
+}
+
 function pronunciationFor(entry){
   if(!entry) return "";
-
-  // Only use the dedicated Pronunciation column.
-  // Lesson/category labels such as "Pronunciation - Lesson 1"
-  // are not pronunciation spellings and must be ignored.
-  const value = String(entry.Pronunciation || "").trim();
-  if(!value) return "";
-
-  const looksLikeLessonLabel =
-    /^pronunciation\s*[-–—:]\s*lesson\b/i.test(value) ||
-    /^lesson\s*\d+/i.test(value);
-
-  return looksLikeLessonLabel ? "" : value;
+  const value=String(entry.Pronunciation||"").trim();
+  if(value){
+    const bad=/^pronunciation\s*[-–—:]\s*lesson\b/i.test(value)||/^lesson\s*\d+/i.test(value);
+    if(!bad) return value;
+  }
+  return applyPronunciationRules(String(entry["Asrydian / Asmonian"]||"").trim());
 }
 
 function buildPronunciationGuide(text, source){
@@ -278,8 +401,6 @@ function buildPronunciationGuide(text, source){
   if(exact){
     const exactPronunciation = pronunciationFor(exact);
     if(exactPronunciation) return exactPronunciation;
-    // If the phrase row has no real pronunciation, continue below and
-    // build the guide from each word instead of showing a category label.
   }
 
   const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
@@ -290,10 +411,22 @@ function buildPronunciationGuide(text, source){
       parts.push(token);
       continue;
     }
+
     const entry = exactEntryFor(token, source);
-    const pronunciation = pronunciationFor(entry);
-    parts.push(pronunciation || token);
+
+    if(entry){
+      // pronunciationFor always uses the entry's Asrydian form, regardless
+      // of which translation direction is selected.
+      parts.push(pronunciationFor(entry));
+    } else if(source === "Asrydian / Asmonian"){
+      // Unknown Asrydian text can still receive a rule-based attempt.
+      parts.push(applyPronunciationRules(token));
+    } else {
+      // Unknown English text has no Asrydian pronunciation yet.
+      parts.push(token);
+    }
   }
+
   return parts.join("");
 }
 
@@ -441,6 +574,48 @@ function renderPhraseParts(text, source, target){
   `;
 }
 
+
+function renderPronunciationRules(){
+  const status = document.getElementById("pronunciationRulesStatus");
+  const list = document.getElementById("pronunciationRulesList");
+  if(!status || !list) return;
+
+  if(!pronunciationRules.length){
+    status.textContent = "No rules loaded";
+    list.innerHTML = `
+      <div class="empty">
+        No usable pronunciation rules were received. Confirm the sheet tab is named
+        exactly <strong>Pronunciation</strong> and is shared with viewers.
+      </div>`;
+    return;
+  }
+
+  status.textContent = `${pronunciationRules.length} pronunciation rule${pronunciationRules.length === 1 ? "" : "s"} loaded`;
+  list.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Written Pattern</th>
+            <th>Sound</th>
+            <th>Rule</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pronunciationRules.map(rule => `
+            <tr>
+              <td>${escapeHtml(rule.pattern)}</td>
+              <td><strong>${escapeHtml(rule.sound)}</strong></td>
+              <td>${escapeHtml(rule.rule || "")}</td>
+              <td>${escapeHtml(rule.example || "")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function render(){
   const q=query.value;
   const [source,target] = fieldNames();
@@ -548,10 +723,20 @@ async function loadLiveDictionary(){
   stats.textContent = "Loading the live Google Sheet…";
   results.innerHTML = '<div class="empty">Connecting to the master dictionary…</div>';
   try{
-    const response = await fetch(LIVE_SHEET_CSV, {cache:"no-store"});
+    const cacheBust = `&_=${Date.now()}`;
+    const [response, pronunciationResponse] = await Promise.all([
+      fetch(LIVE_SHEET_CSV + cacheBust, {cache:"no-store"}),
+      fetch(PRONUNCIATION_SHEET_CSV + cacheBust, {cache:"no-store"})
+    ]);
     if(!response.ok) throw new Error(`Google Sheets returned ${response.status}`);
     const csv = await response.text();
     const table = parseCSV(csv);
+    if(pronunciationResponse.ok){
+      loadPronunciationRules(parseCSV(await pronunciationResponse.text()));
+    } else {
+      pronunciationRules = [];
+    }
+    renderPronunciationRules();
     if(table.length < 2) throw new Error("The sheet did not return dictionary rows.");
     const rawHeaders = table[0].map(h => String(h || "").replace(/^\uFEFF/,"").trim());
     const headers = rawHeaders.map((header, index) => {
@@ -600,6 +785,10 @@ async function loadLiveDictionary(){
     render();
   }catch(err){
     console.error(err);
+    const pronunciationStatus = document.getElementById("pronunciationRulesStatus");
+    const pronunciationList = document.getElementById("pronunciationRulesList");
+    if(pronunciationStatus) pronunciationStatus.textContent = "Rules failed to load";
+    if(pronunciationList) pronunciationList.innerHTML = `<div class="empty warning">${escapeHtml(err.message)}</div>`;
     stats.textContent = "Could not load the live dictionary.";
     results.innerHTML = `<div class="empty warning">
       <strong>Live sheet connection failed.</strong><br><br>
@@ -611,5 +800,10 @@ async function loadLiveDictionary(){
 }
 loadLiveDictionary();
 </script>
+
+<div style="position:fixed;right:10px;bottom:10px;z-index:9999;
+background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
+padding:6px 9px;font-size:12px;">Version 1.12</div>
+
 </body>
 </html>
