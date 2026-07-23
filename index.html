@@ -179,7 +179,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     <button class="swap" id="swap" title="Swap direction">⇄</button>
     <div class="search-box">
       <label id="rightLabel">Asrydian</label>
-      <input id="translationBox" placeholder="Translation appears here" readonly>
+      <input id="translationBox" placeholder="Type anything to attempt a translation" readonly>
       <div id="translationPronunciation" class="translation-pronunciation hidden">
         <span class="pronunciation-label">Pronunciation</span>
         <span id="pronunciationOutput"></span>
@@ -210,7 +210,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <section id="numbers" class="tabpage panel hidden"></section>
 <section id="review" class="tabpage panel hidden"></section>
 
-<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet, including live pronunciation help. Unknown words remain unchanged and are highlighted red.</div>
+<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet. Only valid pronunciation values from column E are displayed.</div>
 </div>
 
 <script>
@@ -259,18 +259,18 @@ function fieldNames(){
 
 function pronunciationFor(entry){
   if(!entry) return "";
-  const possibleHeaders = [
-    "Pronunciation",
-    "Pronunciation Guide",
-    "How to Pronounce",
-    "Phonetic",
-    "Phonetics"
-  ];
-  for(const header of possibleHeaders){
-    if(String(entry[header] || "").trim()) return String(entry[header]).trim();
-  }
-  const actualKey = Object.keys(entry).find(k => norm(k).includes("pronunciation"));
-  return actualKey ? String(entry[actualKey] || "").trim() : "";
+
+  // Only use the dedicated Pronunciation column.
+  // Lesson/category labels such as "Pronunciation - Lesson 1"
+  // are not pronunciation spellings and must be ignored.
+  const value = String(entry.Pronunciation || "").trim();
+  if(!value) return "";
+
+  const looksLikeLessonLabel =
+    /^pronunciation\s*[-–—:]\s*lesson\b/i.test(value) ||
+    /^lesson\s*\d+/i.test(value);
+
+  return looksLikeLessonLabel ? "" : value;
 }
 
 function buildPronunciationGuide(text, source){
@@ -278,6 +278,8 @@ function buildPronunciationGuide(text, source){
   if(exact){
     const exactPronunciation = pronunciationFor(exact);
     if(exactPronunciation) return exactPronunciation;
+    // If the phrase row has no real pronunciation, continue below and
+    // build the guide from each word instead of showing a category label.
   }
 
   const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
@@ -384,9 +386,8 @@ function renderPhraseBuilder(q, source, target){
   } else {
     phraseNote.textContent = "Literal word-by-word translation. Word order and grammar may still need adjustment.";
   }
-  translationBox.value = built.plain || "";
-  setPronunciationHelp(built.pronunciation || "");
 }
+
 
 
 function getPhraseParts(text, source, target){
@@ -447,12 +448,17 @@ function render(){
   const cat=category.value;
   let filtered=dictionary.filter(x => (!cat || x.Category===cat) && matches(x[source],q,mode));
   filtered=filtered.slice(0,100);
-  translationBox.value = filtered.length===1 ? filtered[0][target] : "";
-  if(filtered.length === 1){
-    setPronunciationHelp(pronunciationFor(filtered[0]));
-  } else {
-    setPronunciationHelp("");
-  }
+
+  // Always attempt a translation for whatever the user has typed.
+  // Exact words and exact phrases take priority, even when the live-results
+  // list also contains longer phrases using the same word.
+  const attempted = String(q || "").trim()
+    ? buildLiteralPhrase(String(q).trim(), source, target)
+    : {plain:"", pronunciation:""};
+
+  translationBox.value = attempted.plain || "";
+  setPronunciationHelp(attempted.pronunciation || "");
+
   renderPhraseBuilder(q, source, target);
   stats.textContent = q ? `${filtered.length} result${filtered.length===1?"":"s"} shown` : `Browse all ${dictionary.length} live entries`;
   if(!filtered.length){
@@ -547,10 +553,46 @@ async function loadLiveDictionary(){
     const csv = await response.text();
     const table = parseCSV(csv);
     if(table.length < 2) throw new Error("The sheet did not return dictionary rows.");
-    const headers = table[0].map(h => h.trim());
+    const rawHeaders = table[0].map(h => String(h || "").replace(/^\uFEFF/,"").trim());
+    const headers = rawHeaders.map((header, index) => {
+      const cleaned = norm(header).replace(/[^a-z]/g,"");
+
+      if(cleaned === "english") return "English";
+      if(cleaned.includes("asrydian") || cleaned.includes("asmonian")) return "Asrydian / Asmonian";
+      if(cleaned === "category") return "Category";
+      if(cleaned === "root") return "Root";
+      if(
+        cleaned === "pronunciation" ||
+        cleaned === "pronunciationguide" ||
+        cleaned === "howtopronounce" ||
+        cleaned === "phonetic" ||
+        cleaned === "phonetics"
+      ){
+        return "Pronunciation";
+      }
+      if(cleaned.includes("grammar") || cleaned.includes("form")) return "Grammar / Form";
+      if(cleaned === "notes" || cleaned === "note") return "Notes";
+
+      // In your MASTER DICTIONARY layout, column E is Pronunciation.
+      // This fallback protects against odd Google CSV header formatting.
+      if(index === 4) return "Pronunciation";
+
+      return header;
+    });
+
     dictionary = table.slice(1).map(row => {
       const item={};
-      headers.forEach((h,i) => item[h] = row[i] ?? "");
+      headers.forEach((header,i) => {
+        item[header] = String(row[i] ?? "").trim();
+      });
+
+      // Additional position-based fallback for the exact visible sheet layout:
+      // A English, B Asrydian, C Category, D Root, E Pronunciation,
+      // F Grammar / Form, G Notes.
+      if(!item["Pronunciation"] && String(row[4] ?? "").trim()){
+        item["Pronunciation"] = String(row[4]).trim();
+      }
+
       return item;
     }).filter(x => String(x["English"]||"").trim() || String(x["Asrydian / Asmonian"]||"").trim());
     populateCategories();
