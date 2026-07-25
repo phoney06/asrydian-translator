@@ -280,10 +280,13 @@ function applyPronunciationRules(word){
   // Multi-letter combinations are protected first, then single letters.
   let text = original.replace(/[’‘]/g, "'");
 
-  // Silent sequences from the pronunciation sheet.
+  // Silent sequences from the pronunciation rules.
+  // 'e is silent, ľ is silent, and l' is also treated as silent.
+  // Do not silence 'r.
   text = text
     .replace(/'e/gi, "")
-    .replace(/'r/gi, "");
+    .replace(/ľ/gi, "")
+    .replace(/l'/gi, "");
 
   // Use placeholders so later single-letter replacements do not alter
   // multi-letter sounds that have already been decided.
@@ -813,7 +816,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.14</div>
+padding:6px 9px;font-size:12px;">Version 1.15</div>
 
 </body>
 </html>
