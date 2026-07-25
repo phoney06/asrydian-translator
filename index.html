@@ -276,99 +276,90 @@ function applyPronunciationRules(word){
   const original = String(word || "").trim();
   if(!original) return "";
 
-  // Always return a complete pronunciation attempt. Rules modify the parts
-  // they govern; letters without a special rule stay visible.
-  let result = original;
+  // Build one complete pronunciation attempt from the combined rule set.
+  // Multi-letter combinations are protected first, then single letters.
+  let text = original.replace(/[’‘]/g, "'");
 
-  if(!pronunciationRules.length) return result;
+  // Silent sequences from the pronunciation sheet.
+  text = text
+    .replace(/'e/gi, "")
+    .replace(/'r/gi, "");
 
-  const getRule = test => pronunciationRules.find(rule => test(
-    String(rule.pattern || "").trim().toLowerCase(),
-    String(rule.rule || "").trim().toLowerCase()
-  ));
+  // Use placeholders so later single-letter replacements do not alter
+  // multi-letter sounds that have already been decided.
+  const protectedSounds = [];
+  const protect = sound => {
+    const token = `§${protectedSounds.length}§`;
+    protectedSounds.push(sound);
+    return token;
+  };
 
-  const soundOf = rule => String(rule?.sound || "").trim();
+  // Longest and most specific combinations first.
+  text = text.replace(/th/gi, match => protect(match[0] === "T" ? "V" : "v"));
+  text = text.replace(/ai/gi, match => protect(match[0] === "A" ? "I" : "i"));
+  text = text.replace(/au/gi, match => protect(match[0] === "A" ? "Ow" : "ow"));
+  text = text.replace(/ei/gi, match => protect(match[0] === "E" ? "Ay" : "ay"));
+  text = text.replace(/de/gi, match => protect(match[0] === "D" ? "Day" : "day"));
 
-  // Apply multi-letter and apostrophe rules before single-letter rules.
-  const thRule = getRule((p, r) => p === "th" || r.includes("th is pronounced"));
-  if(thRule && soundOf(thRule)){
-    result = result.replace(/th/gi, soundOf(thRule));
-  }
-
-  const silentERule = getRule((p, r) =>
-    p === "’e" || p === "'e" || r.includes("’e sequence is silent") || r.includes("'e sequence is silent")
+  // Contextual G rule: commit to one sound instead of displaying both.
+  // Soft G before E, I, or Y; hard G everywhere else.
+  text = text.replace(/g(?=[eiy])/gi, match =>
+    protect(match === "G" ? "J" : "j")
   );
-  if(silentERule){
-    result = result.replace(/[’']e/gi, "");
-  }
-
-  const silentRRule = getRule((p, r) =>
-    p === "’r" || p === "'r" || r.includes("letter r is silent")
+  text = text.replace(/g/gi, match =>
+    protect(match === "G" ? "G" : "g")
   );
-  if(silentRRule){
-    result = result.replace(/[’']r/gi, "");
-  }
 
-  const kBeforeIRule = getRule((p, r) =>
-    p.includes("k + i") || r.includes("k is fully pronounced before i")
+  // Contextual K rule from the combined K = C or Ch guidance.
+  // K before E, I, or Y takes the Ch sound; otherwise it stays hard.
+  text = text.replace(/k(?=[eiy])/gi, match =>
+    protect(match === "K" ? "Ch" : "ch")
   );
-  if(kBeforeIRule && soundOf(kBeforeIRule)){
-    result = result.replace(/k(?=i|i[’'])/gi, soundOf(kBeforeIRule));
-  }
-
-  const kBeforeERule = getRule((p, r) =>
-    p.includes("k + e") || r.includes("k changes to a ch sound before e")
+  text = text.replace(/k/gi, match =>
+    protect(match === "K" ? "K" : "k")
   );
-  if(kBeforeERule && soundOf(kBeforeERule)){
-    result = result.replace(/k(?=e|[’']e)/gi, soundOf(kBeforeERule));
-  }
 
-  const kNextERule = getRule((p, r) =>
-    p.includes("k next to e") || r.includes("pair makes a ch sound")
-  );
-  if(kNextERule && soundOf(kNextERule)){
-    const sound = soundOf(kNextERule);
-    result = result
-      .replace(/ke/gi, match => preserveRuleCase(match, sound + "e"))
-      .replace(/ek/gi, match => preserveRuleCase(match, "e" + sound));
-  }
+  // S at the beginning/end stays S; internal S becomes Sh.
+  text = text.replace(/s/gi, (match, offset, full) => {
+    const atEdge = offset === 0 || offset === full.length - 1;
+    if(atEdge) return protect(match === "S" ? "S" : "s");
+    return protect(match === "S" ? "Sh" : "sh");
+  });
 
-  const kNextIRule = getRule((p, r) =>
-    p.includes("k next to i") || r.includes("pair makes a c sound")
-  );
-  if(kNextIRule && soundOf(kNextIRule)){
-    const sound = soundOf(kNextIRule);
-    result = result
-      .replace(/ki/gi, match => preserveRuleCase(match, sound + "i"))
-      .replace(/ik/gi, match => preserveRuleCase(match, "i" + sound));
-  }
+  // Single-letter sound rules. Consonants that already sound like
+  // themselves remain unchanged; vowels receive their spoken values.
+  const singleLetterSounds = {
+    a: "a",
+    b: "b",
+    d: "d",
+    f: "f",
+    y: "y",
+    h: "h",
+    w: "w",
+    l: "l",
+    m: "m",
+    n: "n",
+    t: "t",
+    r: "r",
+    e: "eh",
+    i: "ee",
+    o: "oh",
+    u: "oo"
+  };
 
-  // S inside a word becomes SH. Beginning/end S remains normal S.
-  const insideSRule = getRule((p, r) =>
-    p.includes("s inside a word") || r.includes("pronounced as an sh sound")
-  );
-  if(insideSRule && soundOf(insideSRule) && result.length > 2){
-    const first = result.slice(0, 1);
-    const middle = result.slice(1, -1).replace(/s/gi, soundOf(insideSRule));
-    const last = result.slice(-1);
-    result = first + middle + last;
-  }
+  text = text.replace(/[abdfyhwlmntreiou]/gi, match => {
+    const sound = singleLetterSounds[match.toLowerCase()] || match;
+    const cased = match === match.toUpperCase()
+      ? sound.charAt(0).toUpperCase() + sound.slice(1)
+      : sound;
+    return protect(cased);
+  });
 
-  // G has a speaker-choice rule. Keep G visible and annotate the choice
-  // instead of silently choosing one pronunciation.
-  const gRule = getRule((p, r) =>
-    p === "g" || r.includes("speaker may choose either pronunciation")
-  );
-  if(gRule && /g/i.test(result)){
-    const choice = soundOf(gRule);
-    if(choice){
-      result = result.replace(/g/gi, match => `${match}(${choice})`);
-    }
-  }
+  // Restore protected sounds.
+  text = text.replace(/§(\d+)§/g, (_, index) => protectedSounds[Number(index)] || "");
 
-  return result;
+  return text;
 }
-
 function preserveRuleCase(original, replacement){
   if(original === original.toUpperCase()) return replacement.toUpperCase();
   if(original[0] === original[0].toUpperCase()){
@@ -822,7 +813,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.13</div>
+padding:6px 9px;font-size:12px;">Version 1.14</div>
 
 </body>
 </html>
