@@ -163,6 +163,29 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 }
 .copy-translation-btn.copied{border-color:var(--good);color:var(--good)}
 
+.number-tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.number-tool-box{background:#0f172a;border:1px solid var(--border);border-radius:16px;padding:16px}
+.number-tool-box label{display:block;color:var(--muted);margin-bottom:8px;font-size:.9rem}
+.number-tool-box textarea{width:100%;min-height:130px;resize:vertical;font:inherit;font-size:1.05rem;padding:14px;border-radius:12px;border:1px solid var(--border);background:#091120;color:var(--text)}
+.number-tool-box textarea:focus{outline:none;border-color:var(--accent2);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
+.number-output-grid{display:grid;gap:12px;margin-top:16px}
+.number-output-card{background:#0f172a;border:1px solid var(--border);border-radius:14px;padding:14px}
+.number-output-label{color:var(--muted);font-size:.82rem;margin-bottom:6px}
+.number-output-value{font-size:1.1rem;line-height:1.55;word-break:break-word}
+.number-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.number-error{color:#fca5a5;margin-top:12px}
+@media(max-width:760px){.number-tool-grid{grid-template-columns:1fr}}
+
+.preferences-panel{margin:14px 0;background:#0b1326;border:1px solid var(--border);border-radius:14px;padding:14px}
+.preferences-panel summary{cursor:pointer;font-weight:700}
+.preferences-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px;margin-top:12px}
+.pref-item{display:flex;align-items:flex-start;gap:9px;background:#0f172a;border:1px solid var(--border);border-radius:10px;padding:10px}
+.pref-item input{margin-top:3px}.pref-item small{display:block;color:var(--muted);margin-top:3px;line-height:1.35}
+.quality-indicator{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.quality-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:#0f172a;border-radius:999px;padding:7px 11px;font-size:.88rem}
+.quality-dot{width:9px;height:9px;border-radius:50%;background:#22c55e}
+.quality-context .quality-dot{background:#f59e0b}.quality-generated .quality-dot{background:#38bdf8}.quality-unknown .quality-dot{background:#ef4444}
+
 </style>
 </head>
 <body>
@@ -180,6 +203,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   <button class="tab" data-tab="grammar">Grammar</button>
   <button class="tab" data-tab="pronunciation">Pronunciation</button>
   <button class="tab" data-tab="lessons">Lessons</button>
+  <button class="tab" data-tab="numberTranslator">Number Translator</button>
   <button class="tab" data-tab="numbers">Number Rules</button>
   <button class="tab" data-tab="review">Needs Review</button>
 </nav>
@@ -209,8 +233,23 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     </select>
     <button class="clear" id="clear">Clear</button>
   </div>
+
+  <details class="preferences-panel">
+    <summary>Preferences</summary>
+    <div class="preferences-grid">
+      <label class="pref-item"><input type="checkbox" id="prefShowDigits" checked><span><strong>Show digits beside numbers</strong><small>ten billion (10,000,000,000)</small></span></label>
+      <label class="pref-item"><input type="checkbox" id="prefConvertTimes" checked><span><strong>Recognize written times</strong><small>ten thirty (10:30)</small></span></label>
+      <label class="pref-item"><input type="checkbox" id="prefShowPronunciation" checked><span><strong>Show pronunciation</strong><small>Show pronunciation guides when available.</small></span></label>
+      <label class="pref-item"><input type="checkbox" id="prefShowNotes" checked><span><strong>Show translation notes</strong><small>Show literal/context warnings.</small></span></label>
+      <label class="pref-item"><input type="checkbox" id="prefShowQuality" checked><span><strong>Show quality indicator</strong><small>Exact, contextual, generated, or unknown.</small></span></label>
+    </div>
+  </details>
   <div id="phraseBuilder" class="phrase-box hidden">
     <div class="phrase-title">Combined translation</div>
+    <div id="translationQuality" class="quality-indicator">
+      <span class="quality-pill"><span class="quality-dot"></span><span>Exact translation</span></span>
+    </div>
+
     <div id="phraseOutput" class="phrase-output"></div>
     <div class="copy-translation-row">
       <button type="button" id="copyCombinedTranslation" class="copy-translation-btn">Copy Translation</button>
@@ -221,6 +260,88 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   <div class="results" id="results"></div>
 </section>
 
+
+
+<section id="numberTranslator" class="tabpage panel hidden">
+  <h2 style="margin-top:0">Number Toolkit</h2>
+  <p class="muted">Convert a single number, or scan full text for written-out numbers.</p>
+
+  <div class="number-tool-box" style="margin-bottom:18px">
+    <h3 style="margin-top:0">Number Converter</h3>
+    <label for="numberDirection">Input type</label>
+    <select id="numberDirection">
+      <option value="auto">Auto Detect</option>
+      <option value="digits">Digits</option>
+      <option value="english">English words</option>
+      <option value="asrydian">Asrydian words</option>
+    </select>
+
+    <label for="numberInput" style="margin-top:14px">Number</label>
+    <textarea id="numberInput" placeholder="Try: 10,205,082,523"></textarea>
+
+    <div class="number-actions">
+      <button type="button" class="copy-btn" id="translateNumberBtn">Convert Number</button>
+      <button type="button" class="clear" id="clearNumberBtn">Clear</button>
+    </div>
+    <div id="numberError" class="number-error"></div>
+
+    <div class="number-output-grid">
+      <div class="number-output-card">
+        <div class="number-output-label">Digits</div>
+        <div id="numberDigitsOutput" class="number-output-value">—</div>
+        <button type="button" class="copy-btn number-copy" data-copy-target="numberDigitsOutput">Copy</button>
+      </div>
+      <div class="number-output-card">
+        <div class="number-output-label">English words</div>
+        <div id="numberEnglishOutput" class="number-output-value">—</div>
+        <button type="button" class="copy-btn number-copy" data-copy-target="numberEnglishOutput">Copy</button>
+      </div>
+      <div class="number-output-card">
+        <div class="number-output-label">Asrydian words</div>
+        <div id="numberAsrydianOutput" class="number-output-value">—</div>
+        <button type="button" class="copy-btn number-copy" data-copy-target="numberAsrydianOutput">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="number-tool-box">
+    <h3 style="margin-top:0">Number Extraction</h3>
+    <label for="extractDirection">Text language</label>
+    <select id="extractDirection">
+      <option value="asrydian">Asrydian text</option>
+      <option value="english">English text</option>
+    </select>
+
+    <label for="numberExtractInput" style="margin-top:14px">Full sentence or paragraph</label>
+    <textarea id="numberExtractInput" placeholder="Paste a full sentence containing written-out numbers."></textarea>
+
+    <div class="number-actions">
+      <button type="button" class="copy-btn" id="extractNumbersBtn">Find Numbers</button>
+      <button type="button" class="clear" id="clearExtractBtn">Clear</button>
+    </div>
+    <div id="numberExtractError" class="number-error"></div>
+
+    <div id="numberExtractResults" class="number-output-grid"></div>
+
+    <div class="number-output-card" style="margin-top:14px">
+      <div class="number-output-label">Text with numbers replaced by digits</div>
+      <div id="numberReplacedText" class="number-output-value">—</div>
+      <button type="button" class="copy-btn number-copy" data-copy-target="numberReplacedText">Copy</button>
+    </div>
+
+    <div class="number-output-card" style="margin-top:14px">
+      <div class="number-output-label">Original text with digits added</div>
+      <div id="numberOriginalAnnotated" class="number-output-value">—</div>
+      <button type="button" class="copy-btn number-copy" data-copy-target="numberOriginalAnnotated">Copy</button>
+    </div>
+
+    <div class="number-output-card" style="margin-top:14px">
+      <div class="number-output-label">Translated text with digits added</div>
+      <div id="numberTranslatedAnnotated" class="number-output-value">—</div>
+      <button type="button" class="copy-btn number-copy" data-copy-target="numberTranslatedAnnotated">Copy</button>
+    </div>
+  </div>
+</section>
 <section id="grammar" class="tabpage panel hidden"></section>
 <section id="pronunciation" class="tabpage panel hidden"></section>
 <section id="lessons" class="tabpage panel hidden"></section>
@@ -968,6 +1089,25 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
 
   const nextEnglish = englishAliasOptions(nextEntry)[0] || String(nextEntry.English || "");
   const nextEnglishNorm = normalizeLookupText(nextEnglish);
+
+  const directAddressTitles = new Set([
+    "majesty","highness","queen","king","empress","emperor","lord","lady",
+    "commander","captain","prince","princess","duke","duchess","sir","madam"
+  ]);
+  if(directAddressTitles.has(nextEnglishNorm)){
+    return "Your";
+  }
+
+  const youreFollowers = new Set([
+    "needed","welcome","right","wrong","ready","late","early","safe","correct",
+    "incorrect","strong","weak","alive","dead","here","there"
+  ]);
+  if(youreFollowers.has(nextEnglishNorm) ||
+     nextEnglishNorm.endsWith("ing") ||
+     nextEnglishNorm.endsWith("ed")){
+    return "You're";
+  }
+
   const nextAsrydian = normalizeLookupText(nextEntry["Asrydian / Asmonian"] || nextInfo.token);
   const category = normalizeLookupText(nextEntry.Category || "");
   const grammar = normalizeLookupText(nextEntry["Grammar / Form"] || "");
@@ -1080,6 +1220,93 @@ function buildLiteralPhrase(text, source, target){
   };
 }
 
+
+const MAIN_PREF_DEFAULTS={
+  showDigits:true,convertTimes:true,showPronunciation:true,showNotes:true,showQuality:true
+};
+
+function mainPreferences(){
+  return {
+    showDigits:document.getElementById("prefShowDigits")?.checked??true,
+    convertTimes:document.getElementById("prefConvertTimes")?.checked??true,
+    showPronunciation:document.getElementById("prefShowPronunciation")?.checked??true,
+    showNotes:document.getElementById("prefShowNotes")?.checked??true,
+    showQuality:document.getElementById("prefShowQuality")?.checked??true
+  };
+}
+function loadMainPreferences(){
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem("asrydianMainPreferences")||"{}");}catch(_){}
+  const values={...MAIN_PREF_DEFAULTS,...saved};
+  const map={showDigits:"prefShowDigits",convertTimes:"prefConvertTimes",showPronunciation:"prefShowPronunciation",showNotes:"prefShowNotes",showQuality:"prefShowQuality"};
+  Object.entries(map).forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.checked=Boolean(values[key]);});
+}
+function saveMainPreferences(){
+  try{localStorage.setItem("asrydianMainPreferences",JSON.stringify(mainPreferences()));}catch(_){}
+}
+function cardinalizeAmbiguousNumbers(text){
+  const replacements={
+    "Twenty/Twentieth":"Twenty","Thirty/Thirtieth":"Thirty","Forty/Fortieth":"Forty",
+    "Fourty/Fourtieth":"Forty","Fifty/Fiftieth":"Fifty","Sixty/Sixtieth":"Sixty",
+    "Seventy/Seventieth":"Seventy","Eighty/Eightieth":"Eighty","Ninety/Ninetieth":"Ninety"
+  };
+  let out=String(text||"");
+  Object.entries(replacements).forEach(([from,to])=>{
+    out=out.replace(new RegExp(from.replace("/","\\\\/"),"gi"),match=>{
+      return match[0]===match[0].toLowerCase()?to.toLowerCase():to;
+    });
+  });
+  return out;
+}
+function parseWrittenTimePhrase(phrase){
+  const words=normalizeNumberInput(phrase).split(" ").filter(Boolean);
+  if(words.length<2||words.length>4)return null;
+  for(let split=1;split<words.length;split++){
+    try{
+      const hour=Number(parseEnglishNumber(words.slice(0,split).join(" ")));
+      const minute=Number(parseEnglishNumber(words.slice(split).join(" ")));
+      if(hour>=1&&hour<=12&&minute>=0&&minute<=59){
+        return `${hour}:${String(minute).padStart(2,"0")}`;
+      }
+    }catch(_){}
+  }
+  return null;
+}
+function annotateMainEnglishTranslation(text){
+  const prefs=mainPreferences();
+  let output=cardinalizeAmbiguousNumbers(text);
+  if(!prefs.showDigits)return output;
+
+  const found=extractNumberPhrases(output,"english");
+  if(!found.length)return output;
+
+  [...found].reverse().forEach(result=>{
+    let numeric=formatBigInt(result.value);
+    if(prefs.convertTimes){
+      const time=parseWrittenTimePhrase(result.phrase);
+      if(time)numeric=time;
+    }
+    output=output.slice(0,result.start)+`${result.phrase} (${numeric})`+output.slice(result.end);
+  });
+  return output;
+}
+function setTranslationQuality(built, contextApplied){
+  const el=document.getElementById("translationQuality");
+  if(!el)return;
+  if(!mainPreferences().showQuality){el.style.display="none";return;}
+  el.style.display="flex";
+  let label="Exact translation",cls="";
+  if(built.unknown?.length){label=`${built.unknown.length} unknown word${built.unknown.length===1?"":"s"}`;cls="quality-unknown";}
+  else if(!built.exact&&contextApplied){label="Context applied";cls="quality-context";}
+  else if(!built.exact){label="Generated or word-by-word translation";cls="quality-generated";}
+  el.innerHTML=`<span class="quality-pill ${cls}"><span class="quality-dot"></span><span>${escapeHtml(label)}</span></span>`;
+}
+function applyMainPreferenceVisibility(){
+  const prefs=mainPreferences();
+  translationPronunciation.style.display=prefs.showPronunciation?"":"none";
+  phraseNote.style.display=prefs.showNotes?"":"none";
+}
+
 function renderPhraseBuilder(q, source, target){
   const trimmed = String(q||"").trim();
   const wordCount = (trimmed.match(/[\p{L}\p{M}’']+|[0-9]+/gu) || []).length;
@@ -1092,19 +1319,35 @@ function renderPhraseBuilder(q, source, target){
   }
 
   const built = buildLiteralPhrase(trimmed, source, target);
-  latestCombinedTranslation = built.plain || "";
+  const englishTarget = target === "English";
+  const processedPlain = englishTarget
+    ? annotateMainEnglishTranslation(built.plain || "")
+    : (built.plain || "");
+
+  const contextApplied = englishTarget && processedPlain !== (built.plain || "");
+  latestCombinedTranslation = processedPlain;
   phraseBuilder.classList.remove("hidden");
-  phraseOutput.innerHTML = built.html || "No translation";
-  if(built.pronunciation){
+
+  // Use the processed sentence so digit annotations and resolved number forms
+  // appear in the regular combined-translation box.
+  phraseOutput.innerHTML = escapeHtml(processedPlain || "No translation");
+
+  if(built.pronunciation && mainPreferences().showPronunciation){
     phraseOutput.innerHTML += `<div class="phrase-pronunciation"><strong>Pronunciation</strong><br>${escapeHtml(built.pronunciation)}</div>`;
   }
+
+  setTranslationQuality(built, contextApplied || (!built.exact && !built.unknown.length));
+
   if(built.exact){
     phraseNote.textContent = "Exact phrase found in the dictionary.";
   } else if(built.unknown.length){
-    phraseNote.textContent = `Literal word-by-word translation. Words shown in red are unknown and remain in the original language: ${[...new Set(built.unknown)].join(", ")}. Word order and grammar may still need adjustment.`;
+    phraseNote.textContent = `Literal word-by-word translation. Unknown words remain in the original language: ${[...new Set(built.unknown)].join(", ")}. Word order and grammar may still need adjustment.`;
   } else {
-    phraseNote.textContent = "Literal word-by-word translation. Word order and grammar may still need adjustment.";
+    phraseNote.textContent = contextApplied
+      ? "Context rules were applied for articles, pronouns, numbers, or time."
+      : "Literal word-by-word translation. Word order and grammar may still need adjustment.";
   }
+  applyMainPreferenceVisibility();
 }
 
 
@@ -1501,6 +1744,589 @@ function parseCSV(text){
   return rows;
 }
 
+
+
+const SMALL_NUMBER_WORDS = {
+  zero:0n, one:1n, two:2n, three:3n, four:4n, five:5n, six:6n, seven:7n,
+  eight:8n, nine:9n, ten:10n, eleven:11n, twelve:12n, thirteen:13n,
+  fourteen:14n, fifteen:15n, sixteen:16n, seventeen:17n, eighteen:18n,
+  nineteen:19n, twenty:20n, thirty:30n, forty:40n, fourty:40n, fifty:50n,
+  sixty:60n, seventy:70n, eighty:80n, ninety:90n
+};
+
+const SCALE_NUMBER_WORDS = {
+  hundred:100n, thousand:1000n, million:1000000n,
+  billion:1000000000n, trillion:1000000000000n
+};
+
+const ENGLISH_0_19 = [
+  "zero","one","two","three","four","five","six","seven","eight","nine",
+  "ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen",
+  "seventeen","eighteen","nineteen"
+];
+
+const ENGLISH_TENS = [
+  "","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"
+];
+
+function normalizeNumberInput(text){
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[–—-]/g, " ")
+    .replace(/,/g, " ")
+    .replace(/\band\b/g, " ")
+    .replace(/[.]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseEnglishNumber(text){
+  const raw = String(text || "").trim();
+  if(/^[+-]?\d[\d,\s]*$/.test(raw)){
+    return BigInt(raw.replace(/[,\s]/g, ""));
+  }
+
+  const words = normalizeNumberInput(raw).split(" ").filter(Boolean);
+  if(!words.length) throw new Error("Enter a number.");
+
+  let total = 0n;
+  let group = 0n;
+
+  for(const word of words){
+    if(word in SMALL_NUMBER_WORDS){
+      group += SMALL_NUMBER_WORDS[word];
+    }else if(word === "hundred"){
+      group = (group || 1n) * 100n;
+    }else if(word in SCALE_NUMBER_WORDS){
+      const scale = SCALE_NUMBER_WORDS[word];
+      total += (group || 1n) * scale;
+      group = 0n;
+    }else{
+      throw new Error(`Unrecognized English number word: ${word}`);
+    }
+  }
+
+  return total + group;
+}
+
+function cardinalEnglishOption(entry){
+  const options = englishAliasOptions(entry);
+  if(!options.length) return "";
+
+  const ordinalPattern =
+    /(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth|fortieth|fiftieth|sixtieth|seventieth|eightieth|ninetieth)$/i;
+
+  return options.find(option => !ordinalPattern.test(option.trim())) || options[0];
+}
+
+function numberValueFromEnglishLabel(label){
+  const normalized = normalizeNumberInput(label);
+  if(normalized in SMALL_NUMBER_WORDS) return SMALL_NUMBER_WORDS[normalized];
+  if(normalized in SCALE_NUMBER_WORDS) return SCALE_NUMBER_WORDS[normalized];
+  return null;
+}
+
+function buildAsrydianNumberMaps(){
+  const asToValue = new Map();
+  const valueToAs = new Map();
+
+  dictionary.forEach(entry => {
+    const asrydian = String(entry["Asrydian / Asmonian"] || "").trim();
+    if(!asrydian) return;
+
+    const english = cardinalEnglishOption(entry);
+    const value = numberValueFromEnglishLabel(english);
+    if(value === null) return;
+
+    entryAliases(asrydian).forEach(alias => {
+      asToValue.set(normalizeLookupText(alias), value);
+    });
+
+    if(!valueToAs.has(value.toString())){
+      valueToAs.set(value.toString(), asrydian);
+    }
+  });
+
+  const fallbacks = {
+    "100":"Thradek",
+    "1000":"Kentrafa",
+    "1000000":"Mireth",
+    "1000000000":"Thrathethal",
+    "1000000000000":"Thrathethalen"
+  };
+
+  Object.entries(fallbacks).forEach(([value, word]) => {
+    if(!valueToAs.has(value)) valueToAs.set(value, word);
+    if(!asToValue.has(normalizeLookupText(word))){
+      asToValue.set(normalizeLookupText(word), BigInt(value));
+    }
+  });
+
+  return {asToValue, valueToAs};
+}
+
+function parseAsrydianNumber(text){
+  const {asToValue} = buildAsrydianNumberMaps();
+
+  const words = String(text || "")
+    .replace(/[(),.;:!?]/g, " ")
+    .split(/\s+/)
+    .map(normalizeLookupText)
+    .filter(Boolean);
+
+  if(!words.length) throw new Error("Enter an Asrydian number.");
+
+  let total = 0n;
+  let group = 0n;
+
+  for(const word of words){
+    if(!asToValue.has(word)){
+      throw new Error(`Unrecognized Asrydian number word: ${word}`);
+    }
+
+    const value = asToValue.get(word);
+
+    if(value === 100n){
+      group = (group || 1n) * 100n;
+    }else if(value >= 1000n){
+      total += (group || 1n) * value;
+      group = 0n;
+    }else{
+      group += value;
+    }
+  }
+
+  return total + group;
+}
+
+function underThousandToEnglish(number){
+  let n = Number(number);
+  const parts = [];
+
+  if(n >= 100){
+    parts.push(ENGLISH_0_19[Math.floor(n / 100)], "hundred");
+    n %= 100;
+  }
+
+  if(n >= 20){
+    const tens = ENGLISH_TENS[Math.floor(n / 10)];
+    const ones = n % 10;
+    parts.push(ones ? `${tens}-${ENGLISH_0_19[ones]}` : tens);
+  }else if(n > 0 || !parts.length){
+    parts.push(ENGLISH_0_19[n]);
+  }
+
+  return parts.join(" ");
+}
+
+function numberToEnglishWords(number){
+  let n = BigInt(number);
+  if(n === 0n) return "zero";
+  if(n < 0n) return `negative ${numberToEnglishWords(-n)}`;
+
+  const groups = [
+    [1000000000000n, "trillion"],
+    [1000000000n, "billion"],
+    [1000000n, "million"],
+    [1000n, "thousand"]
+  ];
+
+  const parts = [];
+
+  for(const [scale, label] of groups){
+    if(n >= scale){
+      const amount = n / scale;
+      parts.push(numberToEnglishWords(amount), label);
+      n %= scale;
+    }
+  }
+
+  if(n > 0n){
+    parts.push(underThousandToEnglish(n));
+  }
+
+  return parts.join(" ");
+}
+
+function underThousandToAsrydian(number, valueToAs){
+  let n = BigInt(number);
+  const parts = [];
+
+  if(n >= 100n){
+    const hundreds = n / 100n;
+    if(hundreds > 1n){
+      parts.push(valueToAs.get(hundreds.toString()) || numberToEnglishWords(hundreds));
+    }
+    parts.push(valueToAs.get("100") || "Thradek");
+    n %= 100n;
+  }
+
+  if(n >= 20n){
+    const tens = (n / 10n) * 10n;
+    parts.push(valueToAs.get(tens.toString()) || numberToEnglishWords(tens));
+    n %= 10n;
+  }
+
+  if(n > 0n || !parts.length){
+    parts.push(valueToAs.get(n.toString()) || numberToEnglishWords(n));
+  }
+
+  return parts.join(" ");
+}
+
+function numberToAsrydianWords(number){
+  let n = BigInt(number);
+  const {valueToAs} = buildAsrydianNumberMaps();
+
+  if(n === 0n) return valueToAs.get("0") || "zero";
+  if(n < 0n){
+    throw new Error("Negative Asrydian number formatting is not defined.");
+  }
+
+  const groups = [
+    [1000000000000n, "1000000000000"],
+    [1000000000n, "1000000000"],
+    [1000000n, "1000000"],
+    [1000n, "1000"]
+  ];
+
+  const parts = [];
+
+  for(const [scale, key] of groups){
+    if(n >= scale){
+      const amount = n / scale;
+      parts.push(underThousandToAsrydian(amount, valueToAs));
+      parts.push(valueToAs.get(key) || numberToEnglishWords(scale));
+      n %= scale;
+    }
+  }
+
+  if(n > 0n){
+    parts.push(underThousandToAsrydian(n, valueToAs));
+  }
+
+  return parts.join(" ");
+}
+
+function formatBigInt(number){
+  const sign = number < 0n ? "-" : "";
+  const digits = (number < 0n ? -number : number).toString();
+  return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function detectNumberInputType(text){
+  const raw = String(text || "").trim();
+
+  if(/^[+-]?\d[\d,\s]*$/.test(raw)) return "digits";
+
+  try{
+    parseEnglishNumber(raw);
+    return "english";
+  }catch(_){}
+
+  try{
+    parseAsrydianNumber(raw);
+    return "asrydian";
+  }catch(_){}
+
+  return null;
+}
+
+function translateNumberTool(){
+  const input = document.getElementById("numberInput");
+  const direction = document.getElementById("numberDirection");
+  const error = document.getElementById("numberError");
+
+  if(!input || !direction || !error) return;
+
+  try{
+    error.textContent = "";
+
+    let mode = direction.value;
+    if(mode === "auto"){
+      mode = detectNumberInputType(input.value);
+      if(!mode){
+        throw new Error("Could not detect whether this is digits, English, or Asrydian.");
+      }
+    }
+
+    let value;
+    if(mode === "digits"){
+      value = BigInt(String(input.value).replace(/[,\s]/g, ""));
+    }else if(mode === "english"){
+      value = parseEnglishNumber(input.value);
+    }else{
+      value = parseAsrydianNumber(input.value);
+    }
+
+    document.getElementById("numberDigitsOutput").textContent = formatBigInt(value);
+    document.getElementById("numberEnglishOutput").textContent = numberToEnglishWords(value);
+    document.getElementById("numberAsrydianOutput").textContent = numberToAsrydianWords(value);
+  }catch(err){
+    error.textContent = err.message;
+  }
+}
+
+function tokenSpans(text){
+  const spans = [];
+  const regex = /[\p{L}\p{M}'’\-]+|\d[\d,]*/gu;
+  let match;
+
+  while((match = regex.exec(text))){
+    spans.push({
+      raw: match[0],
+      normalized: normalizeLookupText(match[0]),
+      start: match.index,
+      end: regex.lastIndex
+    });
+  }
+
+  return spans;
+}
+
+function englishNumberTokenSet(){
+  return new Set([
+    ...Object.keys(SMALL_NUMBER_WORDS),
+    ...Object.keys(SCALE_NUMBER_WORDS),
+    "and"
+  ]);
+}
+
+function extractNumberPhrases(text, language){
+  const spans = tokenSpans(text);
+  const results = [];
+
+  let validSet;
+  if(language === "english"){
+    validSet = englishNumberTokenSet();
+  }else{
+    validSet = new Set(buildAsrydianNumberMaps().asToValue.keys());
+  }
+
+  let index = 0;
+
+  while(index < spans.length){
+    if(!validSet.has(spans[index].normalized)){
+      index++;
+      continue;
+    }
+
+    let endIndex = index;
+    while(
+      endIndex + 1 < spans.length &&
+      validSet.has(spans[endIndex + 1].normalized) &&
+      text.slice(spans[endIndex].end, spans[endIndex + 1].start).match(/^[\s,–—-]*$/)
+    ){
+      endIndex++;
+    }
+
+    const start = spans[index].start;
+    const end = spans[endIndex].end;
+    const phrase = text.slice(start, end);
+
+    try{
+      const value = language === "english"
+        ? parseEnglishNumber(phrase)
+        : parseAsrydianNumber(phrase);
+
+      results.push({
+        phrase,
+        value,
+        start,
+        end
+      });
+    }catch(_){}
+
+    index = endIndex + 1;
+  }
+
+  return results;
+}
+
+function replaceExtractedNumbers(text, results){
+  let output = text;
+
+  [...results].reverse().forEach(result => {
+    output =
+      output.slice(0, result.start) +
+      formatBigInt(result.value) +
+      output.slice(result.end);
+  });
+
+  return output;
+}
+
+function renderExtractResults(results, language){
+  const container = document.getElementById("numberExtractResults");
+  if(!container) return;
+
+  container.innerHTML = "";
+
+  if(!results.length){
+    container.innerHTML =
+      '<div class="number-output-card"><div class="number-output-value">No complete number phrases found.</div></div>';
+    return;
+  }
+
+  results.forEach((result, index) => {
+    const card = document.createElement("div");
+    card.className = "number-output-card";
+
+    const sourceLabel = language === "english" ? "English phrase" : "Asrydian phrase";
+
+    card.innerHTML = `
+      <div class="number-output-label">Number ${index + 1}</div>
+      <div class="number-output-value"><strong>${sourceLabel}:</strong> ${escapeHtml(result.phrase)}</div>
+      <div class="number-output-value"><strong>Digits:</strong> ${formatBigInt(result.value)}</div>
+      <div class="number-output-value"><strong>English:</strong> ${escapeHtml(numberToEnglishWords(result.value))}</div>
+      <div class="number-output-value"><strong>Asrydian:</strong> ${escapeHtml(numberToAsrydianWords(result.value))}</div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+
+function annotateOriginalNumberText(text, results){
+  let output = text;
+
+  [...results].reverse().forEach(result => {
+    const annotation = `${result.phrase} (${formatBigInt(result.value)})`;
+    output =
+      output.slice(0, result.start) +
+      annotation +
+      output.slice(result.end);
+  });
+
+  return output;
+}
+
+function translatePlainSegment(segment, sourceLanguage){
+  if(!segment) return "";
+
+  const source = sourceLanguage === "asrydian"
+    ? "Asrydian / Asmonian"
+    : "English";
+  const target = sourceLanguage === "asrydian"
+    ? "English"
+    : "Asrydian / Asmonian";
+
+  return buildLiteralPhrase(segment, source, target).plain;
+}
+
+function translatedNumberPhrase(value, sourceLanguage){
+  return sourceLanguage === "asrydian"
+    ? numberToEnglishWords(value)
+    : numberToAsrydianWords(value);
+}
+
+function translateTextWithNumberAnnotations(text, results, sourceLanguage){
+  if(!results.length){
+    return translatePlainSegment(text, sourceLanguage);
+  }
+
+  const parts = [];
+  let cursor = 0;
+
+  results.forEach(result => {
+    parts.push(
+      translatePlainSegment(text.slice(cursor, result.start), sourceLanguage)
+    );
+
+    parts.push(
+      `${translatedNumberPhrase(result.value, sourceLanguage)} (${formatBigInt(result.value)})`
+    );
+
+    cursor = result.end;
+  });
+
+  parts.push(translatePlainSegment(text.slice(cursor), sourceLanguage));
+  return parts.join("");
+}
+
+function extractNumbersTool(){
+  const input = document.getElementById("numberExtractInput");
+  const direction = document.getElementById("extractDirection");
+  const error = document.getElementById("numberExtractError");
+
+  if(!input || !direction || !error) return;
+
+  try{
+    error.textContent = "";
+
+    const results = extractNumberPhrases(input.value, direction.value);
+    renderExtractResults(results, direction.value);
+
+    document.getElementById("numberReplacedText").textContent =
+      results.length ? replaceExtractedNumbers(input.value, results) : "—";
+
+    document.getElementById("numberOriginalAnnotated").textContent =
+      results.length ? annotateOriginalNumberText(input.value, results) : "—";
+
+    document.getElementById("numberTranslatedAnnotated").textContent =
+      results.length
+        ? translateTextWithNumberAnnotations(input.value, results, direction.value)
+        : "—";
+  }catch(err){
+    error.textContent = err.message;
+  }
+}
+
+
+loadMainPreferences();
+document.querySelectorAll(".preferences-panel input").forEach(input=>{
+  input.addEventListener("change",()=>{
+    saveMainPreferences();
+    applyMainPreferenceVisibility();
+    query.dispatchEvent(new Event("input",{bubbles:true}));
+  });
+});
+applyMainPreferenceVisibility();
+
+document.getElementById("translateNumberBtn")?.addEventListener("click", translateNumberTool);
+
+document.getElementById("numberInput")?.addEventListener("keydown", event => {
+  if((event.ctrlKey || event.metaKey) && event.key === "Enter"){
+    translateNumberTool();
+  }
+});
+
+document.getElementById("clearNumberBtn")?.addEventListener("click", () => {
+  document.getElementById("numberInput").value = "";
+  document.getElementById("numberError").textContent = "";
+
+  ["numberDigitsOutput","numberEnglishOutput","numberAsrydianOutput"].forEach(id => {
+    document.getElementById(id).textContent = "—";
+  });
+});
+
+document.getElementById("extractNumbersBtn")?.addEventListener("click", extractNumbersTool);
+
+document.getElementById("clearExtractBtn")?.addEventListener("click", () => {
+  document.getElementById("numberExtractInput").value = "";
+  document.getElementById("numberExtractError").textContent = "";
+  document.getElementById("numberExtractResults").innerHTML = "";
+  document.getElementById("numberReplacedText").textContent = "—";
+  document.getElementById("numberOriginalAnnotated").textContent = "—";
+  document.getElementById("numberTranslatedAnnotated").textContent = "—";
+});
+
+document.addEventListener("click", async event => {
+  const button = event.target.closest(".number-copy");
+  if(!button) return;
+
+  const target = document.getElementById(button.dataset.copyTarget);
+  const text = target?.textContent || "";
+
+  if(!text || text === "—") return;
+
+  await navigator.clipboard.writeText(text);
+
+  const original = button.textContent;
+  button.textContent = "Copied";
+  setTimeout(() => button.textContent = original, 1200);
+});
+
 async function loadLiveDictionary(){
   stats.textContent = "Loading the live Google Sheet…";
   results.innerHTML = '<div class="empty">Connecting to the master dictionary…</div>';
@@ -1579,7 +2405,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.23</div>
+padding:6px 9px;font-size:12px;">Version 1.27</div>
 
 </body>
 </html>
