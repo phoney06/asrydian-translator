@@ -149,6 +149,20 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   .swap{transform:rotate(90deg);justify-self:center}
   .card{grid-template-columns:1fr}
 }
+
+.copy-translation-row{margin-top:16px}
+.copy-translation-btn{
+  background:var(--panel2);
+  color:var(--text);
+  border:1px solid var(--border);
+  padding:11px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  font:inherit;
+  font-weight:700;
+}
+.copy-translation-btn.copied{border-color:var(--good);color:var(--good)}
+
 </style>
 </head>
 <body>
@@ -198,6 +212,9 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   <div id="phraseBuilder" class="phrase-box hidden">
     <div class="phrase-title">Combined translation</div>
     <div id="phraseOutput" class="phrase-output"></div>
+    <div class="copy-translation-row">
+      <button type="button" id="copyCombinedTranslation" class="copy-translation-btn">Copy Translation</button>
+    </div>
     <div id="phraseNote" class="phrase-note"></div>
   </div>
   <div class="stats" id="stats"></div>
@@ -228,6 +245,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <script>
 let dictionary = [];
 let pronunciationRules = [];
+let latestCombinedTranslation = "";
 const SHEET_ID = "1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE";
 const sheetCsvUrl = sheetName =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
@@ -245,9 +263,9 @@ const LIVE_REFERENCE_TABS = {
 };
 const grammarData = [{"Rule": "Plural ending", "English Form": "English plural / -s", "Asrydian Form": "-t", "Explanation": "A final T marks a plural word.", "Example": "Hammer → Hammers: Myolthde → Myolthdet"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to the word.", "Example": "Do → Doing: Lul → Luleif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
 const pronunciationData = [{"Written Pattern": "S at the beginning or end of a word", "Sound": "S", "Rule": "Pronounced as a normal S sound."}, {"Written Pattern": "S inside a word", "Sound": "Sh", "Rule": "Pronounced as an SH sound."}, {"Written Pattern": "K next to E", "Sound": "Ch", "Rule": "The pair makes a CH sound."}, {"Written Pattern": "K next to L", "Sound": "C", "Rule": "The pair makes a C sound."}, {"Written Pattern": "’e", "Sound": "Silent", "Rule": "The ’e sequence is silent."}, {"Written Pattern": "ľ", "Sound": "Silent", "Rule": "The letter ľ is silent."}, {"Written Pattern": "G", "Sound": "Guh or Juh", "Rule": "The speaker may choose either pronunciation."}];
-const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe gorlsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
+const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe golrsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
 const numberRulesData = [{"Unit": "Hundreds", "Range": "100–999", "Unit Word": "Thradek", "Formation Pattern": "(1–9) + Thradek", "Notes": "100 = Thradek; larger hundreds use a number before the unit."}, {"Unit": "Thousands", "Range": "1,000–999,999", "Unit Word": "Kentrafa", "Formation Pattern": "(number under 1,000) + Kentrafa", "Notes": "Largest unit is spoken first."}, {"Unit": "Millions", "Range": "1,000,000–999,999,999", "Unit Word": "Mireth", "Formation Pattern": "(number under 1,000) + Mireth", "Notes": "Largest unit is spoken first."}, {"Unit": "Billions", "Range": "1,000,000,000–999,999,999,999", "Unit Word": "Thrathethal", "Formation Pattern": "(number under 1,000) + Thrathethal", "Notes": "Largest unit is spoken first."}, {"Unit": "Trillions", "Range": "1,000,000,000,000+", "Unit Word": "Thrathethalen", "Formation Pattern": "(number under 1,000) + Thrathethalen", "Notes": "Largest unit is spoken first."}, {"Unit": "Universal Large Number Law", "Range": "", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "1", "Range": "Always speak the largest unit first.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "2", "Range": "Never reverse the order.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "3", "Range": "Never use a word for “and” inside a number.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "4", "Range": "Each large unit behaves like a multiplier.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "5", "Range": "Asrydian numbers are written in letter form only, not with digits.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}];
-const reviewData = [{"English / Topic": "Okay", "Version A": "Byos", "Version B": "Boys", "Reason": "Likely a typo in the newer list; Lesson 2 uses Byos."}, {"English / Topic": "Play", "Version A": "Halugen", "Version B": "Halujen", "Reason": "New vocabulary and lessons use Halugen."}, {"English / Topic": "Gold", "Version A": "Klaga", "Version B": "Kalga", "Reason": "Common-word list uses Klaga; color list uses Kalga."}, {"English / Topic": "Who", "Version A": "Gehlľ", "Version B": "Ghelľ", "Reason": "Dictionary uses Gehlľ; Lesson 1 uses Ghelľ."}, {"English / Topic": "To", "Version A": "Gorlsi", "Version B": "Golrsi", "Reason": "Dictionary uses Gorlsi; long reminder phrase uses Golrsi."}, {"English / Topic": "In", "Version A": "Raisya", "Version B": "Raiysa", "Reason": "Dictionary uses Raisya; lesson sentence uses Raiysa."}, {"English / Topic": "Be", "Version A": "Frukľ", "Version B": "Wainkľaf", "Reason": "Two translations may represent different grammatical contexts."}, {"English / Topic": "Home", "Version A": "Yegelnora", "Version B": "Thaluseni", "Reason": "Two translations may represent different meanings or contexts."}, {"English / Topic": "Gold lesson entry", "Version A": "Gold", "Version B": "No translation supplied", "Reason": "Lesson 3 only listed the English word; both known spellings are noted."}];
+const reviewData = [{"English / Topic": "Okay", "Version A": "Byos", "Version B": "Boys", "Reason": "Likely a typo in the newer list; Lesson 2 uses Byos."}, {"English / Topic": "Play", "Version A": "Halugen", "Version B": "Halujen", "Reason": "New vocabulary and lessons use Halugen."}, {"English / Topic": "Gold", "Version A": "Klaga", "Version B": "Kalga", "Reason": "Common-word list uses Klaga; color list uses Kalga."}, {"English / Topic": "Who", "Version A": "Gehlľ", "Version B": "Ghelľ", "Reason": "Dictionary uses Gehlľ; Lesson 1 uses Ghelľ."}, {"English / Topic": "To", "Version A": "Golrsi", "Version B": "Golrsi", "Reason": "Dictionary uses Golrsi; long reminder phrase uses Golrsi."}, {"English / Topic": "In", "Version A": "Raisya", "Version B": "Raiysa", "Reason": "Dictionary uses Raisya; lesson sentence uses Raiysa."}, {"English / Topic": "Be", "Version A": "Frukľ", "Version B": "Wainkľaf", "Reason": "Two translations may represent different grammatical contexts."}, {"English / Topic": "Home", "Version A": "Yegelnora", "Version B": "Thaluseni", "Reason": "Two translations may represent different meanings or contexts."}, {"English / Topic": "Gold lesson entry", "Version A": "Gold", "Version B": "No translation supplied", "Reason": "Lesson 3 only listed the English word; both known spellings are noted."}];
 
 let direction = "en-as";
 const query = document.getElementById("query");
@@ -467,17 +485,299 @@ function entryAliases(value){
     .filter(Boolean);
 }
 
-function exactEntryFor(text, source){
-  const q = normalizeLookupText(text);
-  return dictionary.find(entry => entryAliases(entry[source]).includes(q));
+
+function pluralizeEnglishWord(word){
+  const original = String(word || "").trim();
+  if(!original) return original;
+
+  const lower = original.toLowerCase();
+  const irregular = {
+    "person":"people", "child":"children", "man":"men", "woman":"women",
+    "mouse":"mice", "goose":"geese", "tooth":"teeth", "foot":"feet",
+    "ox":"oxen"
+  };
+
+  let plural;
+  if(irregular[lower]){
+    plural = irregular[lower];
+  } else if(/[^aeiou]y$/i.test(original)){
+    plural = original.slice(0, -1) + "ies";
+  } else if(/(s|x|z|ch|sh)$/i.test(original)){
+    plural = original + "es";
+  } else if(/(?:f|fe)$/i.test(original) && !/(roof|chef|chief)$/i.test(original)){
+    plural = original.replace(/fe?$/i, "ves");
+  } else {
+    plural = original + "s";
+  }
+
+  if(original === original.toUpperCase() && original.length > 1) return plural.toUpperCase();
+  if(original[0] === original[0].toUpperCase()){
+    return plural.charAt(0).toUpperCase() + plural.slice(1);
+  }
+  return plural;
+}
+
+function pluralizeEnglishTranslation(text){
+  return String(text || "")
+    .split(/\s*\/\s*/)
+    .map(option => {
+      const words = option.trim().split(/\s+/);
+      const last = words.pop() || "";
+      return [...words, pluralizeEnglishWord(last)].join(" ");
+    })
+    .join("/");
+}
+
+function englishPresentParticiple(word){
+  const value = String(word || "").trim();
+  const lower = value.toLowerCase();
+  const irregular = {
+    "die":"dying", "lie":"lying", "tie":"tying", "be":"being"
+  };
+  if(irregular[lower]) return irregular[lower];
+  if(/ie$/i.test(value)) return value.slice(0, -2) + "ying";
+  if(/e$/i.test(value) && !/(ee|ye|oe)$/i.test(value)) return value.slice(0, -1) + "ing";
+  if(/[aeiou][bcdfghjklmnpqrstvwxyz]$/i.test(value) &&
+     !/[wxy]$/i.test(value) && value.length <= 6){
+    return value + value.slice(-1) + "ing";
+  }
+  return value + "ing";
+}
+
+function englishPastTense(word){
+  const value = String(word || "").trim();
+  const lower = value.toLowerCase();
+  const irregular = {
+    "be":"was", "go":"went", "run":"ran", "sleep":"slept", "know":"knew",
+    "see":"saw", "take":"took", "make":"made", "bring":"brought",
+    "think":"thought", "feel":"felt", "get":"got", "do":"did", "have":"had",
+    "read":"read", "fight":"fought", "come":"came"
+  };
+  if(irregular[lower]) return irregular[lower];
+  if(/e$/i.test(value)) return value + "d";
+  if(/[^aeiou]y$/i.test(value)) return value.slice(0, -1) + "ied";
+  if(/[aeiou][bcdfghjklmnpqrstvwxyz]$/i.test(value) &&
+     !/[wxy]$/i.test(value) && value.length <= 6){
+    return value + value.slice(-1) + "ed";
+  }
+  return value + "ed";
+}
+
+function englishIngBaseCandidates(word){
+  const lower = normalizeLookupText(word);
+  if(!lower.endsWith("ing") || lower.length <= 3) return [];
+
+  const stem = lower.slice(0, -3);
+  const candidates = [stem];
+  if(stem.endsWith("y")) candidates.push(stem.slice(0, -1) + "ie");
+  candidates.push(stem + "e");
+  if(stem.length > 2 && stem.at(-1) === stem.at(-2)) candidates.push(stem.slice(0, -1));
+  return [...new Set(candidates)];
+}
+
+function englishPastBaseCandidates(word){
+  const lower = normalizeLookupText(word);
+  const irregular = {
+    "was":"be", "were":"be", "went":"go", "ran":"run", "slept":"sleep",
+    "knew":"know", "saw":"see", "took":"take", "made":"make",
+    "brought":"bring", "thought":"think", "felt":"feel", "got":"get",
+    "did":"do", "had":"have", "fought":"fight", "came":"come"
+  };
+  if(irregular[lower]) return [irregular[lower]];
+
+  const candidates = [];
+  if(lower.endsWith("ied")) candidates.push(lower.slice(0, -3) + "y");
+  if(lower.endsWith("ed")){
+    const stem = lower.slice(0, -2);
+    candidates.push(stem, stem + "e");
+    if(stem.length > 2 && stem.at(-1) === stem.at(-2)) candidates.push(stem.slice(0, -1));
+  }
+  if(lower.endsWith("d")) candidates.push(lower.slice(0, -1));
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+function directEntryFor(token, source){
+  const q = normalizeLookupText(token);
+  if(!q) return null;
+  return dictionary.find(entry => entryAliases(entry[source]).includes(q)) || null;
+}
+
+function isVerbEntry(entry){
+  const text = normalizeLookupText([
+    entry?.Category, entry?.["Grammar / Form"], entry?.Notes
+  ].filter(Boolean).join(" "));
+  if(text.includes("verb")) return true;
+
+  const english = normalizeLookupText(
+    String(entry?.English || "").split(/\s*\/\s*/)[0]
+  );
+  const commonVerbs = new Set([
+    "recruit","found","trust","round","need","want","die","love","push","go",
+    "fight","eat","pray","know","read","hear","learn","understand","raid",
+    "look","hide","take","protect","stay","remember","come","think","make",
+    "play","talk","join","upgrade","split","set","buy","put","say","follow",
+    "agree","feel","hope","sleep","train","practice","attend","require",
+    "react","host","live","bring","do","have","be"
+  ]);
+  return commonVerbs.has(english);
+}
+
+const DEFAULT_INA_VERBS = new Set([
+  "recruit", "found", "trust", "round", "need", "want"
+]);
+
+function verbPastClass(entry){
+  const grammar = normalizeLookupText(entry?.["Grammar / Form"] || "");
+  const notes = normalizeLookupText(entry?.Notes || "");
+  const combined = `${grammar} ${notes}`;
+  const english = normalizeLookupText(
+    String(entry?.English || "").split(/\s*\/\s*/)[0]
+  );
+
+  if(/\b(irregular|verb class\s*[:=-]?\s*irregular|past class\s*[:=-]?\s*irregular)\b/.test(combined)){
+    return "IRREGULAR";
+  }
+  if(/\b(verb class\s*[:=-]?\s*ina|past class\s*[:=-]?\s*ina|ina class)\b/.test(combined)){
+    return "INA";
+  }
+  if(/\b(verb class\s*[:=-]?\s*normal|past class\s*[:=-]?\s*normal|normal past)\b/.test(combined)){
+    return "NORMAL";
+  }
+  if(DEFAULT_INA_VERBS.has(english)) return "INA";
+  return "NORMAL";
+}
+
+function derivedPluralEntryFor(token, source){
+  if(source !== "Asrydian / Asmonian") return null;
+  const normalized = normalizeLookupText(token);
+  if(!normalized.endsWith("t") || normalized.length < 2) return null;
+
+  const base = directEntryFor(normalized.slice(0, -1), source);
+  if(!base?.English) return null;
+
+  return {
+    ...base,
+    English: pluralizeEnglishTranslation(base.English),
+    "Asrydian / Asmonian": token,
+    "Grammar / Form": [base["Grammar / Form"], "Derived plural (-t)"].filter(Boolean).join("; "),
+    Notes: [base.Notes, `Automatically derived from ${base["Asrydian / Asmonian"]}`].filter(Boolean).join("; "),
+    __derivedPlural: true
+  };
+}
+
+function derivedAsrydianVerbEntry(token){
+  const normalized = normalizeLookupText(token);
+
+  if(normalized.endsWith("eif") && normalized.length > 3){
+    const base = directEntryFor(normalized.slice(0, -3), "Asrydian / Asmonian");
+    if(base?.English && isVerbEntry(base)){
+      return {
+        ...base,
+        English: englishPresentParticiple(String(base.English).split(/\s*\/\s*/)[0]),
+        "Asrydian / Asmonian": token,
+        "Grammar / Form": [base["Grammar / Form"], "Derived ongoing form (-eif)"].filter(Boolean).join("; "),
+        __derivedProgressive: true
+      };
+    }
+  }
+
+  if(normalized.endsWith("ina") && normalized.length > 3){
+    const base = directEntryFor(normalized.slice(0, -3), "Asrydian / Asmonian");
+    if(base?.English && isVerbEntry(base) && verbPastClass(base) === "INA"){
+      return {
+        ...base,
+        English: englishPastTense(String(base.English).split(/\s*\/\s*/)[0]),
+        "Asrydian / Asmonian": token,
+        "Grammar / Form": [base["Grammar / Form"], "Derived INA past (-ina)"].filter(Boolean).join("; "),
+        __derivedPast: true
+      };
+    }
+  }
+
+  if(normalized.endsWith("a") && normalized.length > 1){
+    const base = directEntryFor(normalized.slice(0, -1), "Asrydian / Asmonian");
+    if(base?.English && isVerbEntry(base) && verbPastClass(base) === "NORMAL"){
+      return {
+        ...base,
+        English: englishPastTense(String(base.English).split(/\s*\/\s*/)[0]),
+        "Asrydian / Asmonian": token,
+        "Grammar / Form": [base["Grammar / Form"], "Derived normal past (-a)"].filter(Boolean).join("; "),
+        __derivedPast: true
+      };
+    }
+  }
+
+  return null;
+}
+
+function derivedEnglishVerbEntry(token){
+  const ingCandidates = englishIngBaseCandidates(token);
+  for(const candidate of ingCandidates){
+    const base = directEntryFor(candidate, "English");
+    if(base?.["Asrydian / Asmonian"] && isVerbEntry(base)){
+      return {
+        ...base,
+        English: token,
+        "Asrydian / Asmonian": `${base["Asrydian / Asmonian"]}eif`,
+        "Grammar / Form": [base["Grammar / Form"], "Derived ongoing form (-eif)"].filter(Boolean).join("; "),
+        __derivedProgressive: true
+      };
+    }
+  }
+
+  const pastCandidates = englishPastBaseCandidates(token);
+  for(const candidate of pastCandidates){
+    const base = directEntryFor(candidate, "English");
+    if(!base?.["Asrydian / Asmonian"] || !isVerbEntry(base)) continue;
+
+    const pastClass = verbPastClass(base);
+    if(pastClass === "IRREGULAR") continue;
+
+    return {
+      ...base,
+      English: token,
+      "Asrydian / Asmonian":
+        `${base["Asrydian / Asmonian"]}${pastClass === "INA" ? "ina" : "a"}`,
+      "Grammar / Form": [
+        base["Grammar / Form"],
+        pastClass === "INA" ? "Derived INA past (-ina)" : "Derived normal past (-a)"
+      ].filter(Boolean).join("; "),
+      __derivedPast: true
+    };
+  }
+
+  return null;
+}
+
+function exactEntryFor(token, source, options={allowDerived:true}){
+  const direct = directEntryFor(token, source);
+  if(direct) return direct;
+  if(options.allowDerived === false) return null;
+
+  if(source === "Asrydian / Asmonian"){
+    return derivedAsrydianVerbEntry(token) || derivedPluralEntryFor(token, source);
+  }
+  if(source === "English"){
+    return derivedEnglishVerbEntry(token);
+  }
+  return null;
 }
 
 function preserveCase(original, translated){
   if(!translated) return translated;
-  if(original === original.toUpperCase() && /[A-Z]/i.test(original)) return translated.toUpperCase();
+
+  const letters = String(original).match(/[\p{L}\p{M}]/gu) || [];
+  const isMultiLetterAllCaps =
+    letters.length > 1 &&
+    original === original.toUpperCase() &&
+    original !== original.toLowerCase();
+
+  if(isMultiLetterAllCaps) return translated.toUpperCase();
+
   if(original[0] && original[0] === original[0].toUpperCase()) {
     return translated.charAt(0).toUpperCase() + translated.slice(1);
   }
+
   return translated;
 }
 
@@ -496,10 +796,161 @@ function nextWordToken(tokens, currentIndex){
   return null;
 }
 
+
+const NUMBER_WORD_FORMS = {
+  "one":{cardinal:"one",ordinal:"first"},
+  "first":{cardinal:"one",ordinal:"first"},
+  "two":{cardinal:"two",ordinal:"second"},
+  "second":{cardinal:"two",ordinal:"second"},
+  "three":{cardinal:"three",ordinal:"third"},
+  "third":{cardinal:"three",ordinal:"third"},
+  "four":{cardinal:"four",ordinal:"fourth"},
+  "fourth":{cardinal:"four",ordinal:"fourth"},
+  "five":{cardinal:"five",ordinal:"fifth"},
+  "fifth":{cardinal:"five",ordinal:"fifth"},
+  "six":{cardinal:"six",ordinal:"sixth"},
+  "sixth":{cardinal:"six",ordinal:"sixth"},
+  "seven":{cardinal:"seven",ordinal:"seventh"},
+  "seventh":{cardinal:"seven",ordinal:"seventh"},
+  "eight":{cardinal:"eight",ordinal:"eighth"},
+  "eighth":{cardinal:"eight",ordinal:"eighth"},
+  "nine":{cardinal:"nine",ordinal:"ninth"},
+  "ninth":{cardinal:"nine",ordinal:"ninth"},
+  "ten":{cardinal:"ten",ordinal:"tenth"},
+  "tenth":{cardinal:"ten",ordinal:"tenth"}
+};
+
+function numberFormsForEntry(entry){
+  const options = englishAliasOptions(entry).map(normalizeLookupText);
+  for(const option of options){
+    if(NUMBER_WORD_FORMS[option]) return NUMBER_WORD_FORMS[option];
+  }
+  return null;
+}
+
+function previousWordToken(tokens, currentIndex){
+  for(let index = currentIndex - 1; index >= 0; index--){
+    const token = tokens[index];
+    if(/[\p{L}\p{M}0-9]/u.test(token)) return {token, index};
+  }
+  return null;
+}
+
+function contextualNumberTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
+  if(source !== "Asrydian / Asmonian" || target !== "English") return null;
+
+  const forms = numberFormsForEntry(entry);
+  if(!forms) return null;
+
+  const wordCount = Array.isArray(tokens)
+    ? tokens.filter(token => /[\p{L}\p{M}0-9]/u.test(token)).length
+    : 0;
+
+  // Alone, preserve both dictionary meanings.
+  if(wordCount <= 1) return `${forms.cardinal}/${forms.ordinal}`;
+
+  const previousInfo = previousWordToken(tokens, tokenIndex);
+  const nextInfo = nextWordToken(tokens, tokenIndex);
+  const previousEntry = previousInfo ? exactEntryFor(previousInfo.token, source) : null;
+  const nextEntry = nextInfo ? exactEntryFor(nextInfo.token, source) : null;
+
+  const previousEnglish = normalizeLookupText(
+    englishAliasOptions(previousEntry || {})[0] || previousEntry?.English || ""
+  );
+  const nextEnglish = normalizeLookupText(
+    englishAliasOptions(nextEntry || {})[0] || nextEntry?.English || ""
+  );
+  const nextCategory = normalizeLookupText(nextEntry?.Category || "");
+  const nextGrammar = normalizeLookupText(nextEntry?.["Grammar / Form"] || "");
+  const nextNotes = normalizeLookupText(nextEntry?.Notes || "");
+
+  const ordinalNouns = new Set([
+    "lesson","chapter","round","place","rank","position","level","stage","phase",
+    "attempt","try","turn","class","section","page","rule","tournament","match",
+    "game","wave","floor","row","column","entry","version","part"
+  ]);
+
+  const explicitOrdinal =
+    nextCategory.includes("ordinal") ||
+    nextGrammar.includes("ordinal") ||
+    nextNotes.includes("ordinal") ||
+    ordinalNouns.has(nextEnglish);
+
+  // Examples: second round, third lesson, first place.
+  if(explicitOrdinal) return forms.ordinal;
+
+  // "the first", "in second place", etc.
+  const ordinalLeadWords = new Set(["the","in","at","on","during"]);
+  if(ordinalLeadWords.has(previousEnglish) && ordinalNouns.has(nextEnglish)){
+    return forms.ordinal;
+  }
+
+  // Counting is the safer default:
+  // two more people, three diamonds, one substitute, four players.
+  return forms.cardinal;
+}
+
+
+function usesAnArticle(word){
+  const raw = String(word || "").trim();
+  const value = normalizeLookupText(raw);
+  if(!value) return false;
+
+  if(/^(honest|honor|honour|hour|heir|herb)\b/.test(value)) return true;
+
+  if(/^(uni([^nmd]|$)|use|user|usual|utility|utensil|euro|ewe|one|once)\b/.test(value)){
+    return false;
+  }
+
+  const compact = raw.replace(/[^A-Za-z0-9]/g, "");
+  if(/^[AEFHILMNORSX][A-Z0-9]*$/.test(compact)) return true;
+
+  return /^[aeiou]/.test(value);
+}
+
+function contextualArticleTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
+  if(source !== "Asrydian / Asmonian" || target !== "English") return null;
+
+  const asrydian = normalizeLookupText(entry?.["Asrydian / Asmonian"] || sourceToken);
+  const options = englishAliasOptions(entry).map(normalizeLookupText);
+  const isArticle = asrydian === "fohl" || (options.includes("a") && options.includes("an"));
+  if(!isArticle) return null;
+
+  const wordCount = Array.isArray(tokens)
+    ? tokens.filter(token => /[\p{L}\p{M}0-9]/u.test(token)).length
+    : 0;
+
+  if(wordCount <= 1) return "A/An";
+
+  const nextInfo = nextWordToken(tokens, tokenIndex);
+  if(!nextInfo) return "a";
+
+  const nextEntry = exactEntryFor(nextInfo.token, source);
+  const nextEnglish = nextEntry
+    ? (englishAliasOptions(nextEntry)[0] || String(nextEntry.English || ""))
+    : nextInfo.token;
+
+  return usesAnArticle(nextEnglish) ? "an" : "a";
+}
+
 function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
   const rawTranslation = String(entry?.[target] || "");
   if(source !== "Asrydian / Asmonian" || target !== "English"){
     return rawTranslation;
+  }
+
+  const contextualArticle = contextualArticleTranslation(
+    entry, sourceToken, tokens, tokenIndex, source, target
+  );
+  if(contextualArticle !== null){
+    return contextualArticle;
+  }
+
+  const contextualNumber = contextualNumberTranslation(
+    entry, sourceToken, tokens, tokenIndex, source, target
+  );
+  if(contextualNumber !== null){
+    return contextualNumber;
   }
 
   const asrydian = normalizeLookupText(entry?.["Asrydian / Asmonian"] || sourceToken);
@@ -546,12 +997,16 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
     return "I'm";
   }
 
+  if(nextEntry.__derivedPast || grammar.includes("past tense")){
+    return "I";
+  }
+
   const irregularParticiples = new Set([
     "brought","known","understood","got","done","been","seen","taken","made",
-    "read","felt","thought","slept","ran","flew","died","learned","finished"
+    "read","felt","thought","slept","finished"
   ]);
-  if(nextAsrydian.endsWith("ina") || /\bed\b/.test(grammar) ||
-     /ed$/.test(nextEnglishNorm) || irregularParticiples.has(nextEnglishNorm)){
+  if(grammar.includes("participle") || grammar.includes("perfect") ||
+     irregularParticiples.has(nextEnglishNorm)){
     return "I've";
   }
 
@@ -629,6 +1084,7 @@ function renderPhraseBuilder(q, source, target){
   const trimmed = String(q||"").trim();
   const wordCount = (trimmed.match(/[\p{L}\p{M}’']+|[0-9]+/gu) || []).length;
   if(wordCount < 2){
+    latestCombinedTranslation = "";
     phraseBuilder.classList.add("hidden");
     phraseOutput.innerHTML = "";
     phraseNote.textContent = "";
@@ -636,6 +1092,7 @@ function renderPhraseBuilder(q, source, target){
   }
 
   const built = buildLiteralPhrase(trimmed, source, target);
+  latestCombinedTranslation = built.plain || "";
   phraseBuilder.classList.remove("hidden");
   phraseOutput.innerHTML = built.html || "No translation";
   if(built.pronunciation){
@@ -792,10 +1249,42 @@ function render(){
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
 function copyText(t){navigator.clipboard?.writeText(t);}
+
+async function copyCombinedResult(){
+  const text = String(latestCombinedTranslation || "");
+  if(!text.trim()) return;
+
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+
+    const button = document.getElementById("copyCombinedTranslation");
+    button.textContent = "Copied";
+    button.classList.add("copied");
+    setTimeout(() => {
+      button.textContent = "Copy Translation";
+      button.classList.remove("copied");
+    }, 1400);
+  }catch(error){
+    console.warn("Could not copy translation:", error);
+  }
+}
+document.getElementById("copyCombinedTranslation").addEventListener("click",copyCombinedResult);
 query.addEventListener("input",render);
 category.addEventListener("change",render);
 document.getElementById("matchMode").addEventListener("change",render);
-document.getElementById("clear").addEventListener("click",()=>{query.value="";translationBox.value="";setPronunciationHelp("");phraseBuilder.classList.add("hidden");render();query.focus();});
+document.getElementById("clear").addEventListener("click",()=>{latestCombinedTranslation="";query.value="";translationBox.value="";setPronunciationHelp("");phraseBuilder.classList.add("hidden");render();query.focus();});
 document.getElementById("swap").addEventListener("click",()=>{
   direction=direction==="en-as"?"as-en":"en-as";
   document.getElementById("leftLabel").textContent=direction==="en-as"?"English":"Asrydian";
@@ -1090,7 +1579,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.18</div>
+padding:6px 9px;font-size:12px;">Version 1.23</div>
 
 </body>
 </html>
