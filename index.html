@@ -504,7 +504,7 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
 
   const asrydian = normalizeLookupText(entry?.["Asrydian / Asmonian"] || sourceToken);
 
-  // Thye by itself intentionally keeps every documented English meaning.
+  // By itself, Thye keeps every documented English option.
   if(asrydian !== "thye" || !Array.isArray(tokens) || tokens.length <= 1){
     return rawTranslation;
   }
@@ -520,44 +520,60 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
   const nextAsrydian = normalizeLookupText(nextEntry["Asrydian / Asmonian"] || nextInfo.token);
   const category = normalizeLookupText(nextEntry.Category || "");
   const grammar = normalizeLookupText(nextEntry["Grammar / Form"] || "");
+  const notes = normalizeLookupText(nextEntry.Notes || "");
 
-  // Eif is the documented -ing form, which normally follows "I'm".
+  const markedVerb =
+    category.includes("verb") || grammar.includes("verb") || notes.includes("verb");
+  const markedAdjective =
+    category.includes("adjective") || category.includes("state") ||
+    grammar.includes("adjective") || notes.includes("adjective");
+  const markedNoun =
+    category.includes("noun") || category.includes("title") ||
+    category.includes("role") || category.includes("person") ||
+    grammar.includes("noun") || notes.includes("noun");
+
+  const commonVerbs = new Set([
+    "love","like","want","go","get","fight","eat","pray","know","read","hear",
+    "die","learn","understand","raid","look","hide","trust","take","care",
+    "protect","stay","remember","come","think","make","play","talk","chat",
+    "join","push","upgrade","split","set","buy","put","say","follow","agree",
+    "disagree","feel","hope","sleep","train","practice","need","attend",
+    "require","react","host","clear","live","bring","brought","do","have",
+    "has","let"
+  ]);
+
   if(nextAsrydian.endsWith("eif") || /\bing\b/.test(grammar) || /ing$/.test(nextEnglishNorm)){
     return "I'm";
   }
 
-  // Ina is the documented completed/past form. Use "I've" for a natural
-  // present-perfect reading when Thye directly precedes it.
   const irregularParticiples = new Set([
-    "brought", "known", "understood", "got", "done", "been",
-    "seen", "taken", "made", "read", "felt", "thought", "slept"
+    "brought","known","understood","got","done","been","seen","taken","made",
+    "read","felt","thought","slept","ran","flew","died","learned","finished"
   ]);
   if(nextAsrydian.endsWith("ina") || /\bed\b/.test(grammar) ||
      /ed$/.test(nextEnglishNorm) || irregularParticiples.has(nextEnglishNorm)){
     return "I've";
   }
 
+  if(markedVerb || commonVerbs.has(nextEnglishNorm)){
+    return "I";
+  }
+
   const adjectiveStates = new Set([
-    "good", "okay", "safe", "strong", "loyal", "royal", "unfortunate",
-    "bad", "better", "great", "amazing", "dead", "finished",
-    "unfinished", "broken", "clear", "hollow", "deep", "old",
-    "small", "little", "here", "well"
+    "good","okay","safe","strong","loyal","royal","unfortunate","bad","better",
+    "great","amazing","dead","finished","unfinished","broken","clear","hollow",
+    "deep","old","small","little","here","well","unmatched","penalizable"
   ]);
-  if(category.includes("adjective") || category.includes("state") ||
-     adjectiveStates.has(nextEnglishNorm)){
+  if(markedAdjective || adjectiveStates.has(nextEnglishNorm)){
     return "I'm";
   }
 
-  // Identity, title, role, and noun constructions use the full "I am".
-  if(category.includes("noun") || category.includes("title") ||
-     category.includes("role") || category.includes("person")){
+  if(markedNoun){
     return "I am";
   }
 
-  // A regular following verb uses the simple subject pronoun.
   return "I";
 }
-
 function translatedTokenValue(entry, token, tokens, tokenIndex, source, target){
   const contextual = contextualEnglishTranslation(
     entry, token, tokens, tokenIndex, source, target
@@ -1074,7 +1090,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.17</div>
+padding:6px 9px;font-size:12px;">Version 1.18</div>
 
 </body>
 </html>
