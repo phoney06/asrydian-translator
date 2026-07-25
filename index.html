@@ -441,9 +441,28 @@ function setPronunciationHelp(value){
   translationPronunciation.classList.remove("hidden");
 }
 
+function normalizeLookupText(value){
+  return norm(value)
+    .replace(/[’‘]/g, "'")
+    .replace(/[.!?]+$/,"")
+    .trim();
+}
+
+function entryAliases(value){
+  const raw = String(value || "").trim();
+  if(!raw) return [];
+
+  // Slash-separated dictionary cells represent alternate accepted forms:
+  // You’re/Your, I/I’m/I am/I’ve, No/Non, A/An, etc.
+  return raw
+    .split(/\s*\/\s*/)
+    .map(part => normalizeLookupText(part))
+    .filter(Boolean);
+}
+
 function exactEntryFor(text, source){
-  const q = norm(text).replace(/[.!?]+$/,"");
-  return dictionary.find(x => norm(x[source]).replace(/[.!?]+$/,"") === q);
+  const q = normalizeLookupText(text);
+  return dictionary.find(entry => entryAliases(entry[source]).includes(q));
 }
 
 function preserveCase(original, translated){
@@ -803,7 +822,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.12</div>
+padding:6px 9px;font-size:12px;">Version 1.13</div>
 
 </body>
 </html>
