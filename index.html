@@ -210,7 +210,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <section id="numbers" class="tabpage panel hidden"></section>
 <section id="review" class="tabpage panel hidden"></section>
 
-<div class="footer">Live-connected to the MASTER DICTIONARY Google Sheet. Only valid pronunciation values from column E are displayed.</div>
+<div class="footer">Live-connected to the MASTER DICTIONARY and reference-table tabs in the Google Sheet.</div>
 </div>
 
 
@@ -228,8 +228,21 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 <script>
 let dictionary = [];
 let pronunciationRules = [];
-const LIVE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE/gviz/tq?tqx=out:csv&sheet=MASTER%20DICTIONARY";
-const PRONUNCIATION_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE/gviz/tq?tqx=out:csv&sheet=Pronunciation";
+const SHEET_ID = "1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE";
+const sheetCsvUrl = sheetName =>
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+
+const LIVE_SHEET_CSV = sheetCsvUrl("MASTER DICTIONARY");
+const PRONUNCIATION_SHEET_CSV = sheetCsvUrl("Pronunciation");
+
+// These candidate names let the website tolerate small tab-name differences.
+const LIVE_REFERENCE_TABS = {
+  grammar: ["Grammar", "GRAMMAR"],
+  pronunciation: ["Pronunciation", "PRONUNCIATION"],
+  lessons: ["Lessons", "LESSONS"],
+  numbers: ["Number Rules", "Numbers", "NUMBER RULES"],
+  review: ["Needs Review", "Review", "NEEDS REVIEW"]
+};
 const grammarData = [{"Rule": "Plural ending", "English Form": "English plural / -s", "Asrydian Form": "-t", "Explanation": "A final T marks a plural word.", "Example": "Hammer → Hammers: Myolthde → Myolthdet"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to the word.", "Example": "Do → Doing: Lul → Luleif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
 const pronunciationData = [{"Written Pattern": "S at the beginning or end of a word", "Sound": "S", "Rule": "Pronounced as a normal S sound."}, {"Written Pattern": "S inside a word", "Sound": "Sh", "Rule": "Pronounced as an SH sound."}, {"Written Pattern": "K next to E", "Sound": "Ch", "Rule": "The pair makes a CH sound."}, {"Written Pattern": "K next to L", "Sound": "C", "Rule": "The pair makes a C sound."}, {"Written Pattern": "’e", "Sound": "Silent", "Rule": "The ’e sequence is silent."}, {"Written Pattern": "ľ", "Sound": "Silent", "Rule": "The letter ľ is silent."}, {"Written Pattern": "G", "Sound": "Guh or Juh", "Rule": "The speaker may choose either pronunciation."}];
 const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe gorlsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
@@ -468,6 +481,90 @@ function preserveCase(original, translated){
   return translated;
 }
 
+function englishAliasOptions(entry){
+  return String(entry?.English || "")
+    .split(/\s*\/\s*/)
+    .map(value => value.trim())
+    .filter(Boolean);
+}
+
+function nextWordToken(tokens, currentIndex){
+  for(let index = currentIndex + 1; index < tokens.length; index++){
+    const token = tokens[index];
+    if(/[\p{L}\p{M}0-9]/u.test(token)) return {token, index};
+  }
+  return null;
+}
+
+function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
+  const rawTranslation = String(entry?.[target] || "");
+  if(source !== "Asrydian / Asmonian" || target !== "English"){
+    return rawTranslation;
+  }
+
+  const asrydian = normalizeLookupText(entry?.["Asrydian / Asmonian"] || sourceToken);
+
+  // Thye by itself intentionally keeps every documented English meaning.
+  if(asrydian !== "thye" || !Array.isArray(tokens) || tokens.length <= 1){
+    return rawTranslation;
+  }
+
+  const nextInfo = nextWordToken(tokens, tokenIndex);
+  if(!nextInfo) return rawTranslation;
+
+  const nextEntry = exactEntryFor(nextInfo.token, source);
+  if(!nextEntry) return "I";
+
+  const nextEnglish = englishAliasOptions(nextEntry)[0] || String(nextEntry.English || "");
+  const nextEnglishNorm = normalizeLookupText(nextEnglish);
+  const nextAsrydian = normalizeLookupText(nextEntry["Asrydian / Asmonian"] || nextInfo.token);
+  const category = normalizeLookupText(nextEntry.Category || "");
+  const grammar = normalizeLookupText(nextEntry["Grammar / Form"] || "");
+
+  // Eif is the documented -ing form, which normally follows "I'm".
+  if(nextAsrydian.endsWith("eif") || /\bing\b/.test(grammar) || /ing$/.test(nextEnglishNorm)){
+    return "I'm";
+  }
+
+  // Ina is the documented completed/past form. Use "I've" for a natural
+  // present-perfect reading when Thye directly precedes it.
+  const irregularParticiples = new Set([
+    "brought", "known", "understood", "got", "done", "been",
+    "seen", "taken", "made", "read", "felt", "thought", "slept"
+  ]);
+  if(nextAsrydian.endsWith("ina") || /\bed\b/.test(grammar) ||
+     /ed$/.test(nextEnglishNorm) || irregularParticiples.has(nextEnglishNorm)){
+    return "I've";
+  }
+
+  const adjectiveStates = new Set([
+    "good", "okay", "safe", "strong", "loyal", "royal", "unfortunate",
+    "bad", "better", "great", "amazing", "dead", "finished",
+    "unfinished", "broken", "clear", "hollow", "deep", "old",
+    "small", "little", "here", "well"
+  ]);
+  if(category.includes("adjective") || category.includes("state") ||
+     adjectiveStates.has(nextEnglishNorm)){
+    return "I'm";
+  }
+
+  // Identity, title, role, and noun constructions use the full "I am".
+  if(category.includes("noun") || category.includes("title") ||
+     category.includes("role") || category.includes("person")){
+    return "I am";
+  }
+
+  // A regular following verb uses the simple subject pronoun.
+  return "I";
+}
+
+function translatedTokenValue(entry, token, tokens, tokenIndex, source, target){
+  const contextual = contextualEnglishTranslation(
+    entry, token, tokens, tokenIndex, source, target
+  );
+  return preserveCase(token, contextual);
+}
+
 function buildLiteralPhrase(text, source, target){
   const exact = exactEntryFor(text, source);
   if(exact) return {
@@ -483,7 +580,8 @@ function buildLiteralPhrase(text, source, target){
   const rendered = [];
   const plain = [];
 
-  for(const token of tokens){
+  for(let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++){
+    const token = tokens[tokenIndex];
     if(/^\s+$/.test(token) || /^[^\p{L}\p{M}0-9]+$/u.test(token)){
       rendered.push(escapeHtml(token));
       plain.push(token);
@@ -491,7 +589,9 @@ function buildLiteralPhrase(text, source, target){
     }
     const found = exactEntryFor(token, source);
     if(found && found[target]){
-      const translated = preserveCase(token, String(found[target]));
+      const translated = translatedTokenValue(
+        found, token, tokens, tokenIndex, source, target
+      );
       rendered.push(`<span class="known-word">${escapeHtml(translated)}</span>`);
       plain.push(translated);
     } else {
@@ -544,7 +644,9 @@ function getPhraseParts(text, source, target){
       token,
       index,
       entry,
-      translation: entry ? (entry[target] || "") : ""
+      translation: entry
+        ? contextualEnglishTranslation(entry, token, tokens, index, source, target)
+        : ""
     };
   });
 }
@@ -572,7 +674,7 @@ function renderPhraseParts(text, source, target){
           <div>
             <div class="part-index">Word ${i+1}</div>
             <h3>${escapeHtml(x[source] || part.token)}</h3>
-            <div class="translation">${escapeHtml(x[target] || "Translation missing")}</div>
+            <div class="translation">${escapeHtml(part.translation || "Translation missing")}</div>
             <div class="meta">
               ${x["Grammar / Form"] ? `<div>${escapeHtml(x["Grammar / Form"])}</div>` : ""}
               ${x.Notes ? `<div>${escapeHtml(x.Notes)}</div>` : ""}
@@ -581,7 +683,7 @@ function renderPhraseParts(text, source, target){
             ${pronunciationFor(x) ? `<div class="entry-pronunciation"><strong>Pronunciation</strong><br>${escapeHtml(pronunciationFor(x))}</div>` : ""}
             ${x.Category ? `<span class="tag">${escapeHtml(x.Category)}</span>` : ""}
           </div>
-          <button class="copy-btn" onclick='copyText(${JSON.stringify(x[target] || "")})'>Copy</button>
+          <button class="copy-btn" onclick='copyText(${JSON.stringify(part.translation || "")})'>Copy</button>
         </div>`;
     }).join("")}
   `;
@@ -687,23 +789,185 @@ document.getElementById("swap").addEventListener("click",()=>{
 });
 
 function simpleCards(data,titleField,bodyFields){
+  if(!Array.isArray(data) || !data.length){
+    return '<div class="empty">No rows found in this sheet tab.</div>';
+  }
   return `<div class="ref-grid">`+data.map(x=>`
   <div class="ref-card"><h3>${escapeHtml(x[titleField]||"")}</h3>
   ${bodyFields.map(f=>x[f]?`<div class="meta"><strong>${escapeHtml(f)}:</strong> ${escapeHtml(x[f])}</div>`:"").join("")}
   </div>`).join("")+`</div>`;
 }
-document.getElementById("grammar").innerHTML=simpleCards(grammarData,"Rule",["English Form","Asrydian Form","Explanation","Example"]);
-document.getElementById("pronunciation").innerHTML=simpleCards(pronunciationData,"Written Pattern",["Sound","Rule"]);
-document.getElementById("numbers").innerHTML=simpleCards(numberRulesData,"Unit",["Range","Unit Word","Formation Pattern","Notes"]);
-document.getElementById("review").innerHTML='<div class="warning"><h2>Spellings or meanings to confirm</h2><p>These were kept instead of silently choosing one version.</p></div>'+simpleCards(reviewData,"English / Topic",["Version A","Version B","Reason"]);
 
-const lessonGroups={};
-lessonsData.forEach(x=>{(lessonGroups[x.Lesson]??=[]).push(x)});
-document.getElementById("lessons").innerHTML=Object.entries(lessonGroups).map(([n,items])=>`
-<div class="ref-card" style="margin-bottom:14px"><h3>Lesson ${escapeHtml(n)}</h3>
-<table><thead><tr><th>English</th><th>Asrydian</th></tr></thead>
-<tbody>${items.map(x=>`<tr><td>${escapeHtml(x.English)}</td><td>${escapeHtml(x.Asrydian)}</td></tr>`).join("")}</tbody>
-</table></div>`).join("");
+function cleanHeader(value){
+  return String(value || "").replace(/^\uFEFF/, "").trim();
+}
+
+function rowsToObjects(rows){
+  if(!Array.isArray(rows) || rows.length < 2) return [];
+  const headers = rows[0].map(cleanHeader);
+  return rows.slice(1)
+    .map(row => {
+      const item = {};
+      headers.forEach((header, index) => {
+        if(header) item[header] = String(row[index] ?? "").trim();
+      });
+      return item;
+    })
+    .filter(item => Object.values(item).some(value => String(value || "").trim()));
+}
+
+function findHeader(objects, candidates){
+  if(!objects.length) return "";
+  const headers = Object.keys(objects[0]);
+  const normalized = value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  for(const candidate of candidates){
+    const wanted = normalized(candidate);
+    const found = headers.find(header => normalized(header) === wanted);
+    if(found) return found;
+  }
+  return "";
+}
+
+function renderGenericTable(targetId, rows, heading=""){
+  const target = document.getElementById(targetId);
+  if(!target) return;
+
+  if(!rows.length){
+    target.innerHTML = '<div class="empty">No rows found in this sheet tab.</div>';
+    return;
+  }
+
+  const headers = [...new Set(rows.flatMap(row => Object.keys(row)))];
+  target.innerHTML = `
+    ${heading ? `<h2>${escapeHtml(heading)}</h2>` : ""}
+    <div class="ref-card" style="overflow-x:auto">
+      <table>
+        <thead><tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${rows.map(row => `<tr>${headers.map(header =>
+            `<td>${escapeHtml(row[header] || "")}</td>`
+          ).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderGrammarTab(rows){
+  const title = findHeader(rows, ["Rule", "Grammar Rule", "Topic"]) || Object.keys(rows[0] || {})[0] || "";
+  const fields = Object.keys(rows[0] || {}).filter(header => header !== title);
+  document.getElementById("grammar").innerHTML = simpleCards(rows, title, fields);
+}
+
+function renderPronunciationTab(rows){
+  const title = findHeader(rows, ["Written Pattern", "Pattern", "Letter"]) || Object.keys(rows[0] || {})[0] || "";
+  const fields = Object.keys(rows[0] || {}).filter(header => header !== title);
+  document.getElementById("pronunciation").innerHTML = simpleCards(rows, title, fields);
+}
+
+function renderLessonsTab(rows){
+  const lessonHeader = findHeader(rows, ["Lesson", "Lesson Number"]);
+  const englishHeader = findHeader(rows, ["English", "English / Topic"]);
+  const asrydianHeader = findHeader(rows, ["Asrydian", "Asrydian / Asmonian", "Translation"]);
+
+  if(!lessonHeader || !englishHeader || !asrydianHeader){
+    renderGenericTable("lessons", rows, "Lessons");
+    return;
+  }
+
+  const groups = {};
+  rows.forEach(row => {
+    const lesson = row[lessonHeader] || "Unnumbered";
+    (groups[lesson] ??= []).push(row);
+  });
+
+  document.getElementById("lessons").innerHTML = Object.entries(groups).map(([lesson, items]) => `
+    <div class="ref-card" style="margin-bottom:14px">
+      <h3>Lesson ${escapeHtml(lesson)}</h3>
+      <table>
+        <thead><tr><th>${escapeHtml(englishHeader)}</th><th>${escapeHtml(asrydianHeader)}</th></tr></thead>
+        <tbody>${items.map(item => `
+          <tr>
+            <td>${escapeHtml(item[englishHeader] || "")}</td>
+            <td>${escapeHtml(item[asrydianHeader] || "")}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`).join("");
+}
+
+function renderReviewTab(rows){
+  document.getElementById("review").innerHTML =
+    '<div class="warning"><h2>Spellings or meanings to confirm</h2><p>This table is loaded live from the Google Sheet.</p></div>';
+  const holder = document.createElement("div");
+  document.getElementById("review").appendChild(holder);
+
+  if(!rows.length){
+    holder.innerHTML = '<div class="empty">No review rows found.</div>';
+    return;
+  }
+
+  const title = findHeader(rows, ["English / Topic", "English", "Topic"]) || Object.keys(rows[0] || {})[0] || "";
+  const fields = Object.keys(rows[0] || {}).filter(header => header !== title);
+  holder.innerHTML = simpleCards(rows, title, fields);
+}
+
+function renderFallbackReferenceTabs(){
+  renderGrammarTab(grammarData);
+  renderPronunciationTab(pronunciationData);
+  renderLessonsTab(lessonsData);
+  renderGenericTable("numbers", numberRulesData, "Number Rules");
+  renderReviewTab(reviewData);
+}
+
+async function fetchSheetCandidates(candidates, cacheBust){
+  let lastError = null;
+
+  for(const sheetName of candidates){
+    try{
+      const response = await fetch(sheetCsvUrl(sheetName) + cacheBust, {cache:"no-store"});
+      if(!response.ok){
+        lastError = new Error(`${sheetName}: Google Sheets returned ${response.status}`);
+        continue;
+      }
+
+      const rows = parseCSV(await response.text());
+      const objects = rowsToObjects(rows);
+      if(objects.length) return {sheetName, rows, objects};
+      lastError = new Error(`${sheetName}: no table rows found`);
+    }catch(error){
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("No matching sheet tab was found.");
+}
+
+async function loadLiveReferenceTabs(cacheBust){
+  const tasks = Object.entries(LIVE_REFERENCE_TABS).map(async ([key, candidates]) => {
+    try{
+      const loaded = await fetchSheetCandidates(candidates, cacheBust);
+
+      if(key === "grammar") renderGrammarTab(loaded.objects);
+      if(key === "pronunciation"){
+        renderPronunciationTab(loaded.objects);
+        loadPronunciationRules(loaded.rows);
+        renderPronunciationRules();
+      }
+      if(key === "lessons") renderLessonsTab(loaded.objects);
+      if(key === "numbers") renderGenericTable("numbers", loaded.objects, loaded.sheetName);
+      if(key === "review") renderReviewTab(loaded.objects);
+
+      return {key, ok:true, sheetName:loaded.sheetName, count:loaded.objects.length};
+    }catch(error){
+      console.warn(`Could not load ${key} tab:`, error);
+      return {key, ok:false, error};
+    }
+  });
+
+  return Promise.all(tasks);
+}
+
+renderFallbackReferenceTabs();
 
 document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
@@ -737,19 +1001,13 @@ async function loadLiveDictionary(){
   results.innerHTML = '<div class="empty">Connecting to the master dictionary…</div>';
   try{
     const cacheBust = `&_=${Date.now()}`;
-    const [response, pronunciationResponse] = await Promise.all([
+    const [response] = await Promise.all([
       fetch(LIVE_SHEET_CSV + cacheBust, {cache:"no-store"}),
-      fetch(PRONUNCIATION_SHEET_CSV + cacheBust, {cache:"no-store"})
+      loadLiveReferenceTabs(cacheBust)
     ]);
     if(!response.ok) throw new Error(`Google Sheets returned ${response.status}`);
     const csv = await response.text();
     const table = parseCSV(csv);
-    if(pronunciationResponse.ok){
-      loadPronunciationRules(parseCSV(await pronunciationResponse.text()));
-    } else {
-      pronunciationRules = [];
-    }
-    renderPronunciationRules();
     if(table.length < 2) throw new Error("The sheet did not return dictionary rows.");
     const rawHeaders = table[0].map(h => String(h || "").replace(/^\uFEFF/,"").trim());
     const headers = rawHeaders.map((header, index) => {
@@ -816,7 +1074,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.15</div>
+padding:6px 9px;font-size:12px;">Version 1.17</div>
 
 </body>
 </html>
