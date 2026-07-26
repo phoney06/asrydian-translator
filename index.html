@@ -186,6 +186,54 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 .quality-dot{width:9px;height:9px;border-radius:50%;background:#22c55e}
 .quality-context .quality-dot{background:#f59e0b}.quality-generated .quality-dot{background:#38bdf8}.quality-unknown .quality-dot{background:#ef4444}
 
+/* Larger main translator input for long phrases */
+
+
+.debug-panel{margin-top:14px;background:#081120;border:1px solid var(--border);border-radius:14px;padding:14px}
+.debug-panel.hidden{display:none}
+.debug-title{font-weight:800;margin-bottom:10px}
+.debug-stage{border-left:3px solid #38bdf8;padding:8px 10px;margin:8px 0;background:#0f172a;border-radius:0 9px 9px 0}
+.debug-stage strong{display:block;margin-bottom:4px}
+.debug-stage code{white-space:pre-wrap;word-break:break-word}
+
+#query,
+#translationBox{
+  width:100%;
+  min-height:220px;
+  height:220px;
+  line-height:1.5;
+  font-size:1.08rem;
+  padding:16px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:#091120;
+  color:var(--text);
+  outline:none;
+  box-shadow:none;
+}
+#query{
+  resize:vertical;
+}
+#translationBox{
+  resize:vertical;
+  cursor:default;
+}
+#query:focus{
+  border-color:var(--accent2);
+  box-shadow:0 0 0 3px rgba(34,211,238,.12);
+}
+#translationBox:focus{
+  border-color:var(--border);
+  box-shadow:none;
+}
+@media(max-width:760px){
+  #query,
+  #translationBox{
+    min-height:180px;
+    height:180px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -212,12 +260,12 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   <div class="search-grid">
     <div class="search-box">
       <label id="leftLabel">English</label>
-      <input id="query" placeholder="Type a word or phrase..." autocomplete="off">
+      <textarea id="query" placeholder="Type a word or phrase..." autocomplete="off"></textarea>
     </div>
     <button class="swap" id="swap" title="Swap direction">⇄</button>
     <div class="search-box">
       <label id="rightLabel">Asrydian</label>
-      <input id="translationBox" placeholder="Type anything to attempt a translation" readonly>
+      <textarea id="translationBox" placeholder="Translation appears here..." readonly></textarea>
       <div id="translationPronunciation" class="translation-pronunciation hidden">
         <span class="pronunciation-label">Pronunciation</span>
         <span id="pronunciationOutput"></span>
@@ -240,8 +288,9 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
       <label class="pref-item"><input type="checkbox" id="prefShowDigits" checked><span><strong>Show digits beside numbers</strong><small>ten billion (10,000,000,000)</small></span></label>
       <label class="pref-item"><input type="checkbox" id="prefConvertTimes" checked><span><strong>Recognize written times</strong><small>ten thirty (10:30)</small></span></label>
       <label class="pref-item"><input type="checkbox" id="prefShowPronunciation" checked><span><strong>Show pronunciation</strong><small>Show pronunciation guides when available.</small></span></label>
-      <label class="pref-item"><input type="checkbox" id="prefShowNotes" checked><span><strong>Show translation notes</strong><small>Show literal/context warnings.</small></span></label>
+      <label class="pref-item"><input type="checkbox" id="prefShowNotes" checked><span><strong>Show translation notes</strong><small>Show literal, context, and autocorrection notes.</small></span></label>
       <label class="pref-item"><input type="checkbox" id="prefShowQuality" checked><span><strong>Show quality indicator</strong><small>Exact, contextual, generated, or unknown.</small></span></label>
+      <label class="pref-item"><input type="checkbox" id="prefDebugMode"><span><strong>Debug Mode</strong><small>Show every translation-processing stage.</small></span></label>
     </div>
   </details>
   <div id="phraseBuilder" class="phrase-box hidden">
@@ -255,6 +304,10 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
       <button type="button" id="copyCombinedTranslation" class="copy-translation-btn">Copy Translation</button>
     </div>
     <div id="phraseNote" class="phrase-note"></div>
+    <div id="translationDebug" class="debug-panel hidden">
+      <div class="debug-title">Translation Debug</div>
+      <div id="translationDebugStages"></div>
+    </div>
   </div>
   <div class="stats" id="stats"></div>
   <div class="results" id="results"></div>
@@ -717,10 +770,114 @@ function englishPastBaseCandidates(word){
   return [...new Set(candidates.filter(Boolean))];
 }
 
+
+const APOSTROPHELESS_CONTRACTIONS = new Map([
+  ["aint","ain't"],
+  ["arent","aren't"],
+  ["cant","can't"],
+  ["couldnt","couldn't"],
+  ["didnt","didn't"],
+  ["doesnt","doesn't"],
+  ["dont","don't"],
+  ["hadnt","hadn't"],
+  ["hasnt","hasn't"],
+  ["havent","haven't"],
+  ["isnt","isn't"],
+  ["mustnt","mustn't"],
+  ["neednt","needn't"],
+  ["shouldnt","shouldn't"],
+  ["wasnt","wasn't"],
+  ["werent","weren't"],
+  ["wont","won't"],
+  ["wouldnt","wouldn't"],
+
+  ["im","i'm"],
+  ["ive","i've"],
+  ["ill","i'll"],
+  ["id","i'd"],
+
+  ["youre","you're"],
+  ["youve","you've"],
+  ["youll","you'll"],
+  ["youd","you'd"],
+
+  ["hes","he's"],
+  ["hed","he'd"],
+  ["hell","he'll"],
+
+  ["shes","she's"],
+  ["shed","she'd"],
+  ["shell","she'll"],
+
+  ["its","it's"],
+
+  ["were","we're"],
+  ["weve","we've"],
+  ["wed","we'd"],
+
+  ["theyre","they're"],
+  ["theyve","they've"],
+  ["theyll","they'll"],
+  ["theyd","they'd"],
+
+  ["thats","that's"],
+  ["theres","there's"],
+  ["heres","here's"],
+  ["whats","what's"],
+  ["whos","who's"],
+  ["wheres","where's"],
+  ["whens","when's"],
+  ["whys","why's"],
+  ["hows","how's"],
+  ["lets","let's"]
+]);
+
+function normalizedLookupCandidates(value, source){
+  const normalized = normalizeLookupText(value);
+  if(!normalized) return [];
+
+  const candidates = [normalized];
+
+  // English contractions are frequently typed without apostrophes.
+  // Only use a curated list so normal plurals and possessives are not guessed.
+  if(source === "English" && APOSTROPHELESS_CONTRACTIONS.has(normalized)){
+    candidates.push(APOSTROPHELESS_CONTRACTIONS.get(normalized));
+  }
+
+  // Also tolerate apostrophes being omitted from an exact dictionary alias.
+  // This is only considered after the direct normalized form.
+  if(source === "English" && !normalized.includes("'")){
+    candidates.push(normalized.replace(/\s+/g, ""));
+  }
+
+  return [...new Set(candidates)];
+}
+
+function contractionCorrectionFor(token, source){
+  if(source !== "English") return null;
+  const normalized = normalizeLookupText(token);
+  return APOSTROPHELESS_CONTRACTIONS.get(normalized) || null;
+}
+
 function directEntryFor(token, source){
-  const q = normalizeLookupText(token);
-  if(!q) return null;
-  return dictionary.find(entry => entryAliases(entry[source]).includes(q)) || null;
+  const candidates = normalizedLookupCandidates(token, source);
+  if(!candidates.length) return null;
+
+  return dictionary.find(entry => {
+    const aliases = entryAliases(entry[source]);
+    if(candidates.some(candidate => aliases.includes(candidate))) return true;
+
+    // For English only, compare aliases with apostrophes removed. This lets
+    // "dont" match "don't" while leaving ordinary plural words untouched.
+    if(source === "English"){
+      const apostropheFreeCandidates = candidates.map(value => value.replace(/'/g, ""));
+      return aliases.some(alias =>
+        apostropheFreeCandidates.includes(alias.replace(/'/g, ""))
+      );
+    }
+
+    return false;
+  }) || null;
 }
 
 function isVerbEntry(entry){
@@ -1182,12 +1339,14 @@ function buildLiteralPhrase(text, source, target){
     html: escapeHtml(exact[target] || ""),
     plain: exact[target] || "",
     unknown: [],
+    autocorrections: [],
     exact: true,
     pronunciation: pronunciationFor(exact)
   };
 
   const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
   const unknown = [];
+  const autocorrections = [];
   const rendered = [];
   const plain = [];
 
@@ -1198,10 +1357,14 @@ function buildLiteralPhrase(text, source, target){
       plain.push(token);
       continue;
     }
+    const correction = contractionCorrectionFor(token, source);
     const found = exactEntryFor(token, source);
     if(found && found[target]){
+      if(correction && normalizeLookupText(token) !== normalizeLookupText(correction)){
+        autocorrections.push(`${token} → ${correction}`);
+      }
       const translated = translatedTokenValue(
-        found, token, tokens, tokenIndex, source, target
+        found, correction || token, tokens, tokenIndex, source, target
       );
       rendered.push(`<span class="known-word">${escapeHtml(translated)}</span>`);
       plain.push(translated);
@@ -1215,6 +1378,7 @@ function buildLiteralPhrase(text, source, target){
     html: rendered.join(""),
     plain: plain.join(""),
     unknown,
+    autocorrections,
     exact:false,
     pronunciation: buildPronunciationGuide(text, source)
   };
@@ -1222,7 +1386,7 @@ function buildLiteralPhrase(text, source, target){
 
 
 const MAIN_PREF_DEFAULTS={
-  showDigits:true,convertTimes:true,showPronunciation:true,showNotes:true,showQuality:true
+  showDigits:true,convertTimes:true,showPronunciation:true,showNotes:true,showQuality:true,debugMode:false
 };
 
 function mainPreferences(){
@@ -1231,14 +1395,15 @@ function mainPreferences(){
     convertTimes:document.getElementById("prefConvertTimes")?.checked??true,
     showPronunciation:document.getElementById("prefShowPronunciation")?.checked??true,
     showNotes:document.getElementById("prefShowNotes")?.checked??true,
-    showQuality:document.getElementById("prefShowQuality")?.checked??true
+    showQuality:document.getElementById("prefShowQuality")?.checked??true,
+    debugMode:document.getElementById("prefDebugMode")?.checked??false
   };
 }
 function loadMainPreferences(){
   let saved={};
   try{saved=JSON.parse(localStorage.getItem("asrydianMainPreferences")||"{}");}catch(_){}
   const values={...MAIN_PREF_DEFAULTS,...saved};
-  const map={showDigits:"prefShowDigits",convertTimes:"prefConvertTimes",showPronunciation:"prefShowPronunciation",showNotes:"prefShowNotes",showQuality:"prefShowQuality"};
+  const map={showDigits:"prefShowDigits",convertTimes:"prefConvertTimes",showPronunciation:"prefShowPronunciation",showNotes:"prefShowNotes",showQuality:"prefShowQuality",debugMode:"prefDebugMode"};
   Object.entries(map).forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.checked=Boolean(values[key]);});
 }
 function saveMainPreferences(){
@@ -1272,6 +1437,103 @@ function parseWrittenTimePhrase(phrase){
   }
   return null;
 }
+
+const CONTEXT_TITLE_WORDS=new Set([
+  "majesty","highness","queen","king","empress","emperor","lord","lady",
+  "commander","captain","prince","princess","duke","duchess","sir","madam"
+]);
+const CONTEXT_YOURE_FOLLOWERS=new Set([
+  "needed","welcome","right","wrong","ready","late","early","safe","correct",
+  "incorrect","strong","weak","alive","dead","here","there","beautiful",
+  "amazing","good","okay","well"
+]);
+
+function contextStartsWithVowelSound(word){
+  const normalized=normalizeLookupText(word);
+  if(!normalized)return false;
+  const anExceptions=["hour","honest","honor","heir","herb"];
+  const aExceptions=["university","user","usual","unicorn","unit","european","one","once"];
+  if(anExceptions.some(item=>normalized.startsWith(item)))return true;
+  if(aExceptions.some(item=>normalized.startsWith(item)))return false;
+  return /^[aeiou]/.test(normalized);
+}
+
+function resolveYourChoice(nextWord){
+  const normalized=normalizeLookupText(nextWord);
+  if(CONTEXT_TITLE_WORDS.has(normalized))return "Your";
+  if(CONTEXT_YOURE_FOLLOWERS.has(normalized)||
+     normalized.endsWith("ing")||
+     normalized.endsWith("ed")||
+     normalized.endsWith("en")){
+    return "You're";
+  }
+  return "Your";
+}
+
+function runEnglishContextEngine(text){
+  let output=String(text||"");
+  const rules=[];
+
+  const resolveYourPattern=(pattern)=>{
+    output=output.replace(pattern,(match,offset,whole)=>{
+      const after=whole.slice(offset+match.length);
+      const next=(after.match(/[\p{L}\p{M}’']+/u)||[""])[0];
+      const choice=resolveYourChoice(next);
+      rules.push(`Resolved "${match}" → "${choice}" before "${next||"end of phrase"}"`);
+      return choice;
+    });
+  };
+
+  resolveYourPattern(/\bYour\s*\/\s*You're\b/gi);
+  resolveYourPattern(/\bYou're\s*\/\s*Your\b/gi);
+
+  const resolveArticlePattern=(pattern)=>{
+    output=output.replace(pattern,(match,offset,whole)=>{
+      const after=whole.slice(offset+match.length);
+      const next=(after.match(/[\p{L}\p{M}’']+/u)||[""])[0];
+      const choice=contextStartsWithVowelSound(next)?"an":"a";
+      rules.push(`Resolved "${match}" → "${choice}" before "${next||"end of phrase"}"`);
+      return choice;
+    });
+  };
+
+  resolveArticlePattern(/\ba\s*\/\s*an\b/gi);
+  resolveArticlePattern(/\ban\s*\/\s*a\b/gi);
+
+  output=output.replace(
+    /\bYou're(\s+)(Majesty|Highness|Queen|King|Empress|Emperor|Lord|Lady|Commander|Captain|Prince|Princess|Duke|Duchess)\b/gi,
+    (match,space,title)=>{
+      rules.push(`Direct-address title detected: "You're ${title}" → "Your ${title}"`);
+      return `Your${space}${title}`;
+    }
+  );
+
+  const beforeFormatting=output;
+  output=output
+    .replace(/\s+([,.;:!?])/g,"$1")
+    .replace(/([,.;:!?])(?=[\p{L}\p{M}])/gu,"$1 ")
+    .replace(/[ \t]{2,}/g," ")
+    .trim();
+  if(output!==beforeFormatting)rules.push("Normalized punctuation spacing");
+
+  return {text:output,rules};
+}
+
+function renderTranslationDebug(stages){
+  const panel=document.getElementById("translationDebug");
+  const container=document.getElementById("translationDebugStages");
+  if(!panel||!container)return;
+  if(!mainPreferences().debugMode){
+    panel.classList.add("hidden");
+    container.innerHTML="";
+    return;
+  }
+  panel.classList.remove("hidden");
+  container.innerHTML=stages.map(stage=>
+    `<div class="debug-stage"><strong>${escapeHtml(stage.name)}</strong><code>${escapeHtml(stage.detail)}</code></div>`
+  ).join("");
+}
+
 function annotateMainEnglishTranslation(text){
   const prefs=mainPreferences();
   let output=cardinalizeAmbiguousNumbers(text);
@@ -1297,6 +1559,7 @@ function setTranslationQuality(built, contextApplied){
   el.style.display="flex";
   let label="Exact translation",cls="";
   if(built.unknown?.length){label=`${built.unknown.length} unknown word${built.unknown.length===1?"":"s"}`;cls="quality-unknown";}
+  else if(built.autocorrections?.length){label="Input autocorrected";cls="quality-context";}
   else if(!built.exact&&contextApplied){label="Context applied";cls="quality-context";}
   else if(!built.exact){label="Generated or word-by-word translation";cls="quality-generated";}
   el.innerHTML=`<span class="quality-pill ${cls}"><span class="quality-dot"></span><span>${escapeHtml(label)}</span></span>`;
@@ -1307,46 +1570,95 @@ function applyMainPreferenceVisibility(){
   phraseNote.style.display=prefs.showNotes?"":"none";
 }
 
-function renderPhraseBuilder(q, source, target){
-  const trimmed = String(q||"").trim();
-  const wordCount = (trimmed.match(/[\p{L}\p{M}’']+|[0-9]+/gu) || []).length;
-  if(wordCount < 2){
-    latestCombinedTranslation = "";
+function renderPhraseBuilder(q,source,target){
+  const trimmed=String(q||"").trim();
+  const wordCount=(trimmed.match(/[\p{L}\p{M}’']+|[0-9]+/gu)||[]).length;
+
+  if(wordCount<2){
+    latestCombinedTranslation="";
     phraseBuilder.classList.add("hidden");
-    phraseOutput.innerHTML = "";
-    phraseNote.textContent = "";
+    phraseOutput.innerHTML="";
+    phraseNote.textContent="";
+    renderTranslationDebug([]);
     return;
   }
 
-  const built = buildLiteralPhrase(trimmed, source, target);
-  const englishTarget = target === "English";
-  const processedPlain = englishTarget
-    ? annotateMainEnglishTranslation(built.plain || "")
-    : (built.plain || "");
+  const debugStages=[{name:"Input",detail:trimmed}];
+  const built=buildLiteralPhrase(trimmed,source,target);
 
-  const contextApplied = englishTarget && processedPlain !== (built.plain || "");
-  latestCombinedTranslation = processedPlain;
+  debugStages.push({
+    name:"Input Normalizer",
+    detail:built.autocorrections?.length
+      ? built.autocorrections.join("\n")
+      : "No punctuation or contraction corrections"
+  });
+
+  debugStages.push({
+    name:"Dictionary Lookup",
+    detail:built.unknown?.length
+      ? `Unknown: ${[...new Set(built.unknown)].join(", ")}\nRaw output: ${built.plain}`
+      : `Raw output: ${built.plain}`
+  });
+
+  const englishTarget=target==="English";
+  let processedPlain=built.plain||"";
+  let contextRules=[];
+
+  if(englishTarget){
+    const contextResult=runEnglishContextEngine(processedPlain);
+    processedPlain=contextResult.text;
+    contextRules=contextResult.rules;
+
+    debugStages.push({
+      name:"Context Engine",
+      detail:contextRules.length
+        ? contextRules.join("\n")
+        : "No contextual ambiguity required resolution"
+    });
+
+    const beforeNumbers=processedPlain;
+    processedPlain=annotateMainEnglishTranslation(processedPlain);
+    debugStages.push({
+      name:"Number Engine",
+      detail:processedPlain!==beforeNumbers
+        ? `${beforeNumbers}\n→ ${processedPlain}`
+        : "No written number or time annotation applied"
+    });
+  }else{
+    debugStages.push({name:"Context Engine",detail:"No English-output context rules required"});
+    debugStages.push({name:"Number Engine",detail:"No English-output number annotation required"});
+  }
+
+  debugStages.push({name:"Formatting",detail:processedPlain||"No translation"});
+
+  latestCombinedTranslation=processedPlain;
   phraseBuilder.classList.remove("hidden");
 
-  // Use the processed sentence so digit annotations and resolved number forms
-  // appear in the regular combined-translation box.
-  phraseOutput.innerHTML = escapeHtml(processedPlain || "No translation");
+  phraseOutput.innerHTML=englishTarget
+    ? escapeHtml(processedPlain||"No translation")
+    : (built.html||escapeHtml(processedPlain||"No translation"));
 
-  if(built.pronunciation && mainPreferences().showPronunciation){
-    phraseOutput.innerHTML += `<div class="phrase-pronunciation"><strong>Pronunciation</strong><br>${escapeHtml(built.pronunciation)}</div>`;
+  if(built.pronunciation&&mainPreferences().showPronunciation){
+    phraseOutput.innerHTML+=`<div class="phrase-pronunciation"><strong>Pronunciation</strong><br>${escapeHtml(built.pronunciation)}</div>`;
   }
 
-  setTranslationQuality(built, contextApplied || (!built.exact && !built.unknown.length));
+  const contextApplied=contextRules.length>0;
+  setTranslationQuality(built,contextApplied||(!built.exact&&!built.unknown.length));
 
   if(built.exact){
-    phraseNote.textContent = "Exact phrase found in the dictionary.";
-  } else if(built.unknown.length){
-    phraseNote.textContent = `Literal word-by-word translation. Unknown words remain in the original language: ${[...new Set(built.unknown)].join(", ")}. Word order and grammar may still need adjustment.`;
-  } else {
-    phraseNote.textContent = contextApplied
-      ? "Context rules were applied for articles, pronouns, numbers, or time."
-      : "Literal word-by-word translation. Word order and grammar may still need adjustment.";
+    phraseNote.textContent="Exact phrase found in the dictionary.";
+  }else if(built.unknown.length){
+    phraseNote.textContent=`Unknown words remain in the original language: ${[...new Set(built.unknown)].join(", ")}.`;
+  }else if(built.autocorrections?.length||contextApplied){
+    const parts=[];
+    if(built.autocorrections?.length)parts.push(`Input normalized: ${[...new Set(built.autocorrections)].join(", ")}`);
+    if(contextApplied)parts.push(`Context applied: ${contextRules.join("; ")}`);
+    phraseNote.textContent=parts.join(". ")+".";
+  }else{
+    phraseNote.textContent="Literal word-by-word translation. Word order and grammar may still need adjustment.";
   }
+
+  renderTranslationDebug(debugStages);
   applyMainPreferenceVisibility();
 }
 
@@ -2405,7 +2717,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 1.27</div>
+padding:6px 9px;font-size:12px;">Version 2.1</div>
 
 </body>
 </html>
