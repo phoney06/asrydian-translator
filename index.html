@@ -385,6 +385,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
       <div id="engineRuleSummary" class="lab-output"></div>
       <div class="lab-actions">
         <button type="button" id="exportEngineData" class="copy-btn">Export Language Data</button>
+        <button type="button" id="testSharedBacklog" class="copy-btn">Test Shared Backlog</button>
         <button type="button" id="resetLocalLanguageData" class="clear">Reset Local Changes</button>
       </div>
     </div>
@@ -423,10 +424,12 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 
     <div class="lab-card">
       <h3>Unknown-Word Review</h3>
-      <p class="muted">Unknown English words encountered by the translator are collected here.</p>
+      <p class="muted">Unknown words are retained locally and submitted to the shared Missing Translations sheet.</p>
+      <div id="sharedBacklogStatus" class="lab-output">Ready — completed unknown words are saved after typing stops.</div>
       <div id="unknownWordList" class="lab-list"></div>
       <div class="lab-actions">
         <button type="button" id="clearUnknownWords" class="clear">Clear Review List</button>
+        <button type="button" id="removePartialUnknownWords" class="clear">Remove Partial Entries</button>
       </div>
     </div>
 
@@ -554,7 +557,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "4.1",
+  version: "4.3",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -579,6 +582,106 @@ const ASRYDIAN_ENGINE = {
 
 const LOCAL_ENTRIES_KEY="asrydianLocalEntriesV4";
 const UNKNOWN_WORDS_KEY="asrydianUnknownWordsV4";
+
+// Shared Missing Translations backlog.
+// This token is intentionally a public submission token. It must never be
+// reused for administrator actions such as approvals or dictionary editing.
+const MISSING_TRANSLATION_API='https://script.google.com/macros/s/AKfycbzAzism3kNNSdAnf2NGg1CtqplY2Ry8udiJVTIkZigZ_T3d9pQ6oRwh_iPlYhiDds-u4A/exec';
+const MISSING_TRANSLATION_PUBLIC_TOKEN='hexonite-606-rvnant';
+
+const submittedMissingThisSession=new Set();
+let missingTranslationTimer=null;
+let missingBacklogStatus="idle";
+
+async function sendMissingTranslation({word,direction,example=""}){
+  const cleanWord=String(word||"").trim();
+  const cleanDirection=String(direction||"").trim();
+  if(!cleanWord||!cleanDirection||!MISSING_TRANSLATION_API)return false;
+
+  try{
+    const response=await fetch(MISSING_TRANSLATION_API,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({
+        secret:MISSING_TRANSLATION_PUBLIC_TOKEN,
+        word:cleanWord,
+        direction:cleanDirection,
+        example:String(example||"").trim().slice(0,500)
+      })
+    });
+
+    if(!response.ok)throw new Error(`Backlog returned ${response.status}`);
+
+    const result=await response.json().catch(()=>({ok:true}));
+    if(result?.ok===false)throw new Error(result.error||"Backlog rejected request");
+
+    missingBacklogStatus="connected";
+    renderSharedBacklogStatus();
+    return true;
+  }catch(error){
+    console.warn("Shared missing-translation backlog unavailable:",error);
+    missingBacklogStatus="offline";
+    renderSharedBacklogStatus();
+    return false;
+  }
+}
+
+function queueMissingTranslations(words,source,sentence){
+  clearTimeout(missingTranslationTimer);
+
+  const unique=[...new Set((words||[])
+    .map(word=>String(word||"").trim())
+    .filter(word=>{
+      const normalized=normalizeLookupText(word);
+      // Ignore empty fragments, one-character keystrokes, and punctuation.
+      return normalized.length>=2 && /[a-zľ’']/i.test(normalized);
+    }))];
+
+  if(!unique.length)return;
+
+  const capturedSentence=String(sentence||"").trim();
+
+  missingTranslationTimer=setTimeout(async()=>{
+    // Re-check the current input. If the user has continued typing since this
+    // queue was created, do not save the stale partial-word version.
+    if(String(query?.value||"").trim()!==capturedSentence)return;
+
+    // Local backlog is now updated only after typing has stopped.
+    collectUnknownWords(unique,source);
+
+    const direction=source==="English"
+      ?"English → Asrydian"
+      :"Asrydian → English";
+
+    for(const word of unique){
+      const key=`${normalizeLookupText(word)}|${normalizeLookupText(direction)}`;
+      if(submittedMissingThisSession.has(key))continue;
+
+      submittedMissingThisSession.add(key);
+      const sent=await sendMissingTranslation({
+        word,
+        direction,
+        example:capturedSentence
+      });
+
+      // Permit a later retry if the shared service was unavailable.
+      if(!sent)submittedMissingThisSession.delete(key);
+    }
+  },1800);
+}
+
+function renderSharedBacklogStatus(){
+  const el=document.getElementById("sharedBacklogStatus");
+  if(!el)return;
+
+  const labels={
+    idle:"Ready — completed unknown words are saved after typing stops.",
+    connected:"Connected — missing words are being saved to the shared sheet.",
+    offline:"Shared sheet unavailable — entries remain saved locally for now."
+  };
+  el.textContent=labels[missingBacklogStatus]||labels.idle;
+  el.dataset.status=missingBacklogStatus;
+}
 
 function readLocalEntries(){
   try{return JSON.parse(localStorage.getItem(LOCAL_ENTRIES_KEY)||"[]")||[]}
@@ -639,7 +742,8 @@ function renderEngineRuleSummary(){
     `Past class NORMAL → -${ASRYDIAN_ENGINE.morphology.past.classes.NORMAL}`,
     `Past class INA → -${ASRYDIAN_ENGINE.morphology.past.classes.INA}`,
     `English agent -er → Asrydian -${ASRYDIAN_ENGINE.morphology.agent.asrydian}`,
-    `Local entries: ${readLocalEntries().length}`
+    `Local entries: ${readLocalEntries().length}`,
+    `Shared missing-word backlog: connected`
   ].join("\n");
 }
 function renderLocalEntryList(){
@@ -691,7 +795,7 @@ function downloadTextFile(filename,text,type="application/json"){
   setTimeout(()=>URL.revokeObjectURL(url),500);
 }
 function setupLanguageLab(){
-  renderEngineRuleSummary();renderLocalEntryList();renderUnknownWordList();
+  renderEngineRuleSummary();renderLocalEntryList();renderUnknownWordList();renderSharedBacklogStatus();
 
   document.getElementById("saveLocalEntry")?.addEventListener("click",()=>{
     const entry={
@@ -735,6 +839,17 @@ function setupLanguageLab(){
     localStorage.removeItem(UNKNOWN_WORDS_KEY);renderUnknownWordList();
   });
 
+  document.getElementById("removePartialUnknownWords")?.addEventListener("click",()=>{
+    let words=[];
+    try{words=JSON.parse(localStorage.getItem(UNKNOWN_WORDS_KEY)||"[]")||[]}catch{}
+    words=words.filter(item=>{
+      const word=normalizeLookupText(item?.word);
+      return word.length>=2 && /[a-zľ’']/i.test(word);
+    });
+    localStorage.setItem(UNKNOWN_WORDS_KEY,JSON.stringify(words));
+    renderUnknownWordList();
+  });
+
   document.getElementById("suggestWordsBtn")?.addEventListener("click",()=>{
     const concept=document.getElementById("conceptInput").value.trim();
     const category=document.getElementById("conceptCategory").value;
@@ -742,6 +857,19 @@ function setupLanguageLab(){
     document.getElementById("wordSuggestions").textContent=suggestions.length
       ? `Draft suggestions for “${concept}” (${category}):\n\n${suggestions.map((x,i)=>`${i+1}. ${x}`).join("\n")}\n\nThese are pattern-based drafts, not official vocabulary.`
       :"Enter an English concept first.";
+  });
+
+  document.getElementById("testSharedBacklog")?.addEventListener("click",async()=>{
+    missingBacklogStatus="idle";
+    renderSharedBacklogStatus();
+    const ok=await sendMissingTranslation({
+      word:"translator-backlog-test",
+      direction:"System Test",
+      example:"Manual connection test from Asrydian Translator Version 4.3"
+    });
+    alert(ok
+      ?"Shared backlog connection succeeded. A test row was created or updated."
+      :"The shared backlog could not be reached. Local storage still works.");
   });
 
   document.getElementById("exportEngineData")?.addEventListener("click",()=>{
@@ -2570,7 +2698,11 @@ function render(){
 
   translationBox.value = attempted.plain || "";
   setPronunciationHelp(attempted.pronunciation || (target==="Asrydian / Asmonian" ? generatedPronunciation(attempted.plain) : ""));
-  collectUnknownWords(attempted.unknown||[], source);
+  queueMissingTranslations(
+    attempted.unknown||[],
+    source,
+    query.value
+  );
 
   try{
     renderPhraseBuilder(q,source,target);
@@ -3617,7 +3749,20 @@ async function loadLiveDictionary(){
     mergeLocalEntries();
     populateCategories();
     document.querySelector(".badge").textContent = `${dictionary.length} live entries`;
-    render();
+
+    // The Google Sheet has loaded successfully at this point. A later display
+    // error must not be reported as a sheet/network connection failure.
+    try{
+      render();
+    }catch(renderError){
+      console.error("Dictionary loaded, but translator rendering failed:",renderError);
+      stats.textContent = `${dictionary.length} live entries loaded.`;
+      results.innerHTML = `<div class="empty warning">
+        <strong>The live dictionary loaded successfully.</strong><br><br>
+        An optional translator display encountered an error.<br><br>
+        Error: ${escapeHtml(renderError.message)}
+      </div>`;
+    }
   }catch(err){
     console.error(err);
     const pronunciationStatus = document.getElementById("pronunciationRulesStatus");
@@ -3626,9 +3771,9 @@ async function loadLiveDictionary(){
     if(pronunciationList) pronunciationList.innerHTML = `<div class="empty warning">${escapeHtml(err.message)}</div>`;
     stats.textContent = "Could not load the live dictionary.";
     results.innerHTML = `<div class="empty warning">
-      <strong>Live sheet connection failed.</strong><br><br>
-      Confirm that the Google Sheet is shared as “Anyone with the link — Viewer,”
-      and that the first tab is named <strong>MASTER DICTIONARY</strong>.<br><br>
+      <strong>The live Google Sheet could not be fetched or parsed.</strong><br><br>
+      The sheet must be shared as “Anyone with the link — Viewer,” and the
+      dictionary tab must be named <strong>MASTER DICTIONARY</strong>.<br><br>
       Error: ${escapeHtml(err.message)}
     </div>`;
   }
@@ -3639,7 +3784,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 4.1</div>
+padding:6px 9px;font-size:12px;">Version 4.3</div>
 
 </body>
 </html>
