@@ -450,6 +450,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     <div class="lab-card">
       <h3>Engine Capabilities</h3>
       <div class="lab-output">
+        <span class="engine-badge">Bidirectional pronunciation matching</span>
         <span class="engine-badge">Unified word pipeline</span>
         <span class="engine-badge">Capitalization normalization</span>
         <span class="engine-badge">Conservative spelling</span>
@@ -574,7 +575,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.0",
+  version: "5.2",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -882,7 +883,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.0"
+      example:"Manual connection test from Asrydian Translator Version 5.2"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -923,7 +924,7 @@ const LIVE_REFERENCE_TABS = {
   numbers: ["Number Rules", "Numbers", "NUMBER RULES"],
   review: ["Needs Review", "Review", "NEEDS REVIEW"]
 };
-const grammarData = [{"Rule": "Plural / present-s ending", "English Form": "Plural nouns or third-person singular verbs / -s", "Asrydian Form": "-t", "Explanation": "Attach T for regular English plural nouns and present-tense verb forms such as says.", "Example": "Hammer → Hammers: Myolthde → Myolthdet; Say → Says: Umfer → Umfert"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to the word.", "Example": "Do → Doing: Lul → Luleif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
+const grammarData = [{"Rule": "Plural / present-s ending", "English Form": "Plural nouns or third-person singular verbs / -s", "Asrydian Form": "-t", "Explanation": "Attach T for regular English plural nouns and present-tense verb forms such as says.", "Example": "Hammer → Hammers: Myolthde → Myolthdet; Say → Says: Umfer → Umfert"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to a verb root. Words that can function as either nouns or verbs, such as Cause, are checked as verb roots when an -ing/-eif form is used.", "Example": "Do → Doing: Lul → Luleif; Cause → Causing: Unes → Uneseif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
 const pronunciationData = [{"Written Pattern": "S at the beginning or end of a word", "Sound": "S", "Rule": "Pronounced as a normal S sound."}, {"Written Pattern": "S inside a word", "Sound": "Sh", "Rule": "Pronounced as an SH sound."}, {"Written Pattern": "K next to E", "Sound": "Ch", "Rule": "The pair makes a CH sound."}, {"Written Pattern": "K next to L", "Sound": "C", "Rule": "The pair makes a C sound."}, {"Written Pattern": "’e", "Sound": "Silent", "Rule": "The ’e sequence is silent."}, {"Written Pattern": "ľ", "Sound": "Silent", "Rule": "The letter ľ is silent."}, {"Written Pattern": "G", "Sound": "Guh or Juh", "Rule": "The speaker may choose either pronunciation."}];
 const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe golrsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
 const numberRulesData = [{"Unit": "Hundreds", "Range": "100–999", "Unit Word": "Thradek", "Formation Pattern": "(1–9) + Thradek", "Notes": "100 = Thradek; larger hundreds use a number before the unit."}, {"Unit": "Thousands", "Range": "1,000–999,999", "Unit Word": "Kentrafa", "Formation Pattern": "(number under 1,000) + Kentrafa", "Notes": "Largest unit is spoken first."}, {"Unit": "Millions", "Range": "1,000,000–999,999,999", "Unit Word": "Mireth", "Formation Pattern": "(number under 1,000) + Mireth", "Notes": "Largest unit is spoken first."}, {"Unit": "Billions", "Range": "1,000,000,000–999,999,999,999", "Unit Word": "Thrathethal", "Formation Pattern": "(number under 1,000) + Thrathethal", "Notes": "Largest unit is spoken first."}, {"Unit": "Trillions", "Range": "1,000,000,000,000+", "Unit Word": "Thrathethalen", "Formation Pattern": "(number under 1,000) + Thrathethalen", "Notes": "Largest unit is spoken first."}, {"Unit": "Universal Large Number Law", "Range": "", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "1", "Range": "Always speak the largest unit first.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "2", "Range": "Never reverse the order.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "3", "Range": "Never use a word for “and” inside a number.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "4", "Range": "Each large unit behaves like a multiplier.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "5", "Range": "Asrydian numbers are written in letter form only, not with digits.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}];
@@ -1437,7 +1438,7 @@ function isVerbEntry(entry){
     "look","hide","take","protect","stay","remember","come","think","make",
     "play","talk","join","upgrade","split","set","buy","put","say","follow",
     "agree","feel","hope","sleep","train","practice","attend","require",
-    "react","host","live","bring","do","have","be"
+    "react","host","live","bring","do","have","be","cause"
   ]);
   return commonVerbs.has(english);
 }
@@ -1634,6 +1635,101 @@ function derivedEnglishVerbEntry(token){
 }
 
 
+
+function compactSoundKey(value){
+  return normalizeLookupText(value)
+    .replace(/[^a-z0-9]+/gi,"")
+    .replace(/(.)\1+/g,"$1");
+}
+
+function englishPronunciationKey(value){
+  // English has no dedicated phonetic column in the current sheet, so this
+  // produces a conservative comparison key rather than claiming a full IPA
+  // pronunciation. It handles common spelling groups while avoiding broad,
+  // unsafe guesses.
+  let text=normalizeLookupText(value)
+    .replace(/ph/g,"f")
+    .replace(/ck/g,"k")
+    .replace(/qu/g,"kw")
+    .replace(/tion/g,"shun")
+    .replace(/sion/g,"zhun")
+    .replace(/tch/g,"ch")
+    .replace(/dge/g,"j")
+    .replace(/ght/g,"t")
+    .replace(/kn(?=[a-z])/g,"n")
+    .replace(/wr(?=[a-z])/g,"r");
+
+  return compactSoundKey(text);
+}
+
+function asrydianPronunciationKey(value,entry=null){
+  const explicit=String(entry?.Pronunciation||"").trim();
+  const spoken=explicit && !/^pronunciation\s*[-–—:]\s*lesson\b/i.test(explicit)
+    ? explicit
+    : applyPronunciationRules(value);
+  return compactSoundKey(spoken);
+}
+
+function pronunciationKeyFor(value,source,entry=null){
+  return source==="Asrydian / Asmonian"
+    ? asrydianPronunciationKey(value,entry)
+    : englishPronunciationKey(value);
+}
+
+function entryPronunciationKeys(entry,source){
+  const field=source==="English"?"English":"Asrydian / Asmonian";
+  const aliases=entryAliases(entry?.[field]||"");
+  return [...new Set(
+    aliases
+      .map(alias=>pronunciationKeyFor(alias,source,entry))
+      .filter(Boolean)
+  )];
+}
+
+function pronunciationCandidate(token,source){
+  const inputKey=pronunciationKeyFor(token,source);
+  if(!inputKey || inputKey.length<2)return null;
+
+  const matches=[];
+  for(const entry of dictionary){
+    const keys=entryPronunciationKeys(entry,source);
+    if(keys.includes(inputKey)){
+      matches.push(entry);
+    }
+  }
+
+  const unique=[...new Set(matches)];
+  return unique.length===1
+    ? {entry:unique[0],key:inputKey}
+    : null;
+}
+
+function attachPronunciationCalculation(entry,source,inputToken,checks){
+  if(!entry)return entry;
+
+  const sourceField=source==="English"?"English":"Asrydian / Asmonian";
+  const targetField=source==="English"?"Asrydian / Asmonian":"English";
+  const sourceValue=String(inputToken||entry[sourceField]||"");
+  const targetValue=String(entry[targetField]||"");
+
+  const sourceSound=pronunciationKeyFor(sourceValue,source,entry);
+  const targetLanguage=source==="English"?"Asrydian / Asmonian":"English";
+  const targetSound=pronunciationKeyFor(targetValue,targetLanguage,entry);
+
+  checks.push({
+    stage:"pronunciation calculation",
+    input:sourceValue,
+    output:`${sourceSound} → ${targetSound}`,
+    passed:Boolean(sourceSound&&targetSound)
+  });
+
+  return {
+    ...entry,
+    __sourcePronunciationKey:sourceSound,
+    __targetPronunciationKey:targetSound
+  };
+}
+
 function editDistanceWithinOne(left,right){
   const a=normalizeLookupText(left);
   const b=normalizeLookupText(right);
@@ -1708,8 +1804,9 @@ function resolveWordPipeline(token,source,options={}){
 
   const direct=directEntryFor(normalized,source);
   if(direct){
+    const calculated=attachPronunciationCalculation(direct,source,token,checks);
     return {
-      entry:{...direct,__resolutionChecks:checks,__resolutionType:"exact"},
+      entry:{...calculated,__resolutionChecks:checks,__resolutionType:"exact"},
       checks,
       type:"exact",
       correctedToken:null
@@ -1739,10 +1836,39 @@ function resolveWordPipeline(token,source,options={}){
     });
 
     if(derived){
+      derived=attachPronunciationCalculation(derived,source,token,checks);
       derived.__resolutionChecks=checks;
       derived.__resolutionType="morphology";
       return {entry:derived,checks,type:"morphology",correctedToken:null};
     }
+  }
+
+  // Written spelling is not the only valid route to a root. Compare the
+  // pronunciation/sound key on both English and Asrydian input before the
+  // token is considered misspelled or unknown.
+  const pronounced=pronunciationCandidate(normalized,source);
+  checks.push({
+    stage:"pronunciation root match",
+    input:normalized,
+    output:pronounced
+      ? String(pronounced.entry[source==="English"?"English":"Asrydian / Asmonian"]||"")
+      : "",
+    passed:Boolean(pronounced)
+  });
+
+  if(pronounced){
+    const calculated=attachPronunciationCalculation(pronounced.entry,source,token,checks);
+    return {
+      entry:{
+        ...calculated,
+        __resolutionChecks:checks,
+        __resolutionType:"pronunciation",
+        __pronunciationMatch:true
+      },
+      checks,
+      type:"pronunciation",
+      correctedToken:null
+    };
   }
 
   if(allowSpelling&&source==="English"){
@@ -1762,7 +1888,7 @@ function resolveWordPipeline(token,source,options={}){
 
       if(corrected.entry){
         corrected.entry={
-          ...corrected.entry,
+          ...attachPronunciationCalculation(corrected.entry,source,token,checks),
           __spellingCorrection:`${token} → ${spelling.token}`,
           __resolutionChecks:[...checks,...(corrected.checks||[])],
           __resolutionType:corrected.type==="exact"?"spelling":corrected.type
@@ -1777,6 +1903,12 @@ function resolveWordPipeline(token,source,options={}){
     }
   }
 
+  checks.push({
+    stage:"pronunciation calculation",
+    input:String(token||""),
+    output:pronunciationKeyFor(token,source),
+    passed:Boolean(pronunciationKeyFor(token,source))
+  });
   checks.push({stage:"grammar classification",input:normalized,passed:false});
   return {entry:null,checks,type:"unknown",correctedToken:null};
 }
@@ -3990,7 +4122,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.0</div>
+padding:6px 9px;font-size:12px;">Version 5.2</div>
 
 </body>
 </html>
