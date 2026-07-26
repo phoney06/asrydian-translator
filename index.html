@@ -234,6 +234,64 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   }
 }
 
+
+@media(max-width:760px){
+  .phrase-box{
+    position:relative;
+    padding-top:72px;
+    overflow:visible;
+  }
+
+  .copy-translation-row{
+    display:block !important;
+    position:absolute;
+    top:14px;
+    left:14px;
+    right:14px;
+    margin:0;
+    z-index:5;
+  }
+
+  .copy-translation-btn{
+    display:block !important;
+    width:100%;
+    min-height:44px;
+    padding:11px 16px;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:relative;
+    z-index:6;
+  }
+
+  .phrase-title{
+    margin-top:0;
+  }
+}
+
+
+.language-lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.lab-card{background:#0b1324;border:1px solid var(--border);border-radius:14px;padding:16px}
+.lab-card h3{margin:0 0 10px}
+.lab-card.full{grid-column:1/-1}
+.lab-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lab-fields label{display:flex;flex-direction:column;gap:6px;font-weight:700}
+.lab-fields input,.lab-fields select,.lab-fields textarea{
+  width:100%;box-sizing:border-box;background:#081120;color:var(--text);
+  border:1px solid var(--border);border-radius:9px;padding:10px
+}
+.lab-fields textarea{min-height:82px;resize:vertical}
+.lab-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+.lab-output{margin-top:12px;padding:12px;background:#081120;border:1px solid var(--border);border-radius:10px;white-space:pre-wrap}
+.lab-list{display:grid;gap:8px;margin-top:10px}
+.lab-item{padding:10px;background:#081120;border:1px solid var(--border);border-radius:9px}
+.confidence-meter{height:8px;background:#1e293b;border-radius:99px;overflow:hidden;margin-top:6px}
+.confidence-meter span{display:block;height:100%;background:linear-gradient(90deg,#ef4444,#eab308,#22c55e)}
+.engine-badge{display:inline-flex;padding:3px 8px;border:1px solid var(--border);border-radius:99px;font-size:12px;margin:2px}
+@media(max-width:760px){
+  .language-lab-grid,.lab-fields{grid-template-columns:1fr}
+  .lab-card.full{grid-column:auto}
+}
+
 </style>
 </head>
 <body>
@@ -254,6 +312,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   <button class="tab" data-tab="numberTranslator">Number Translator</button>
   <button class="tab" data-tab="numbers">Number Rules</button>
   <button class="tab" data-tab="review">Needs Review</button>
+  <button class="tab" data-tab="languageLab">Language Lab</button>
 </nav>
 
 <section id="translator" class="tabpage panel">
@@ -301,7 +360,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 
     <div id="phraseOutput" class="phrase-output"></div>
     <div class="copy-translation-row">
-      <button type="button" id="copyCombinedTranslation" class="copy-translation-btn">Copy Translation</button>
+      <button type="button" id="copyCombinedTranslation" class="copy-translation-btn" aria-label="Copy combined translation">Copy Translation</button>
     </div>
     <div id="phraseNote" class="phrase-note"></div>
     <div id="translationDebug" class="debug-panel hidden">
@@ -314,6 +373,80 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 </section>
 
 
+
+
+<section id="languageLab" class="tabpage panel hidden">
+  <h2 style="margin-top:0">Language Lab</h2>
+  <p class="muted">Test, extend, and export the language engine without editing the website code. Changes made here are stored only in this browser until exported.</p>
+
+  <div class="language-lab-grid">
+    <div class="lab-card">
+      <h3>Engine Configuration</h3>
+      <div id="engineRuleSummary" class="lab-output"></div>
+      <div class="lab-actions">
+        <button type="button" id="exportEngineData" class="copy-btn">Export Language Data</button>
+        <button type="button" id="resetLocalLanguageData" class="clear">Reset Local Changes</button>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <h3>Word-Creation Assistant</h3>
+      <div class="lab-fields">
+        <label>English concept<input id="conceptInput" placeholder="satellite"></label>
+        <label>Category<select id="conceptCategory">
+          <option>noun</option><option>verb</option><option>adjective</option><option>title</option>
+        </select></label>
+      </div>
+      <div class="lab-actions">
+        <button type="button" id="suggestWordsBtn" class="copy-btn">Suggest Asrydian Words</button>
+      </div>
+      <div id="wordSuggestions" class="lab-output">Enter a concept to generate language-pattern suggestions.</div>
+    </div>
+
+    <div class="lab-card full">
+      <h3>Local Dictionary / Phrase Editor</h3>
+      <div class="lab-fields">
+        <label>English<input id="labEnglish" placeholder="say or thank you"></label>
+        <label>Asrydian<input id="labAsrydian" placeholder="Umfer"></label>
+        <label>Category<input id="labCategory" placeholder="Verb, Phrase, Noun..."></label>
+        <label>Root<input id="labRoot" placeholder="Optional root"></label>
+        <label>Pronunciation<input id="labPronunciation" placeholder="Optional pronunciation"></label>
+        <label>Grammar / Form<input id="labGrammar" placeholder="Verb; Past class: NORMAL"></label>
+        <label style="grid-column:1/-1">Notes<textarea id="labNotes" placeholder="Meaning, context, restrictions, or exception notes"></textarea></label>
+      </div>
+      <div class="lab-actions">
+        <button type="button" id="saveLocalEntry" class="copy-btn">Save Local Entry</button>
+        <button type="button" id="clearLabEntry" class="clear">Clear Form</button>
+      </div>
+      <div id="localEntryList" class="lab-list"></div>
+    </div>
+
+    <div class="lab-card">
+      <h3>Unknown-Word Review</h3>
+      <p class="muted">Unknown English words encountered by the translator are collected here.</p>
+      <div id="unknownWordList" class="lab-list"></div>
+      <div class="lab-actions">
+        <button type="button" id="clearUnknownWords" class="clear">Clear Review List</button>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <h3>Engine Capabilities</h3>
+      <div class="lab-output">
+        <span class="engine-badge">Automatic roots</span>
+        <span class="engine-badge">-t forms</span>
+        <span class="engine-badge">-eif continuous</span>
+        <span class="engine-badge">-a / -ina past</span>
+        <span class="engine-badge">Irregular English verbs</span>
+        <span class="engine-badge">Phrase memory</span>
+        <span class="engine-badge">Reverse morphology</span>
+        <span class="engine-badge">Context formatting</span>
+        <span class="engine-badge">Confidence scoring</span>
+        <span class="engine-badge">Pronunciation fallback</span>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section id="numberTranslator" class="tabpage panel hidden">
   <h2 style="margin-top:0">Number Toolkit</h2>
@@ -418,6 +551,216 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 
 <script>
 let dictionary = [];
+
+// VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
+const ASRYDIAN_ENGINE = {
+  version: "4.1",
+  morphology: {
+    thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
+    continuous: { english:"ing", asrydian:"eif" },
+    past: {
+      classes: { NORMAL:"a", INA:"ina" },
+      defaultClass:"NORMAL"
+    },
+    agent: { english:"er", asrydian:"de" }
+  },
+  irregularEnglish: {
+    pastToRoot: {
+      said:"say", went:"go", came:"come", did:"do", had:"have",
+      was:"be", were:"be", fought:"fight", ate:"eat", made:"make",
+      took:"take", brought:"bring", thought:"think", felt:"feel",
+      slept:"sleep", read:"read"
+    }
+  },
+  confidence: {
+    exact:100, phrase:98, morphology:88, context:78, inferred:62, unknown:20
+  }
+};
+
+const LOCAL_ENTRIES_KEY="asrydianLocalEntriesV4";
+const UNKNOWN_WORDS_KEY="asrydianUnknownWordsV4";
+
+function readLocalEntries(){
+  try{return JSON.parse(localStorage.getItem(LOCAL_ENTRIES_KEY)||"[]")||[]}
+  catch{return []}
+}
+function saveLocalEntries(entries){
+  localStorage.setItem(LOCAL_ENTRIES_KEY,JSON.stringify(entries));
+}
+function mergeLocalEntries(){
+  const local=readLocalEntries();
+  const keys=new Set(local.map(x=>`${normalizeLookupText(x.English)}|${normalizeLookupText(x["Asrydian / Asmonian"])}`));
+  dictionary=dictionary.filter(x=>!keys.has(`${normalizeLookupText(x.English)}|${normalizeLookupText(x["Asrydian / Asmonian"])}`));
+  dictionary.push(...local.map(x=>({...x,__local:true})));
+}
+function collectUnknownWords(words, source){
+  if(source!=="English"||!Array.isArray(words)||!words.length)return;
+  let existing=[];
+  try{existing=JSON.parse(localStorage.getItem(UNKNOWN_WORDS_KEY)||"[]")||[]}catch{}
+  const map=new Map(existing.map(x=>[normalizeLookupText(x.word),x]));
+  words.forEach(word=>{
+    const key=normalizeLookupText(word);
+    if(!key)return;
+    const old=map.get(key)||{word,count:0,firstSeen:new Date().toISOString()};
+    old.count=(old.count||0)+1;
+    old.lastSeen=new Date().toISOString();
+    map.set(key,old);
+  });
+  localStorage.setItem(UNKNOWN_WORDS_KEY,JSON.stringify([...map.values()]));
+  renderUnknownWordList();
+}
+function generatedPronunciation(word){
+  let value=String(word||"").trim();
+  if(!value)return "";
+  // Conservative fallback only; sheet pronunciation remains authoritative.
+  return value
+    .replace(/th/gi,"s")
+    .replace(/ľ/g,"ly")
+    .replace(/eif\b/gi,"ayf")
+    .replace(/([aeiou])([aeiou])/gi,"$1-$2")
+    .replace(/([a-z])([A-Z])/g,"$1-$2");
+}
+function translationConfidence(built, contextApplied){
+  if(built?.unknown?.length)return ASRYDIAN_ENGINE.confidence.unknown;
+  if(built?.exact)return ASRYDIAN_ENGINE.confidence.exact;
+  const grammarText=(built?.grammar||[]).map(x=>x.translation||"").join(" ");
+  if(/Derived/i.test(JSON.stringify(built)))return ASRYDIAN_ENGINE.confidence.morphology;
+  if(contextApplied)return ASRYDIAN_ENGINE.confidence.context;
+  if(grammarText)return ASRYDIAN_ENGINE.confidence.inferred;
+  return ASRYDIAN_ENGINE.confidence.unknown;
+}
+function renderEngineRuleSummary(){
+  const el=document.getElementById("engineRuleSummary");
+  if(!el)return;
+  el.textContent=[
+    `Engine version: ${ASRYDIAN_ENGINE.version}`,
+    `English -s/-es/-ies → Asrydian -${ASRYDIAN_ENGINE.morphology.thirdPersonOrPlural.asrydian}`,
+    `English -ing → Asrydian -${ASRYDIAN_ENGINE.morphology.continuous.asrydian}`,
+    `Past class NORMAL → -${ASRYDIAN_ENGINE.morphology.past.classes.NORMAL}`,
+    `Past class INA → -${ASRYDIAN_ENGINE.morphology.past.classes.INA}`,
+    `English agent -er → Asrydian -${ASRYDIAN_ENGINE.morphology.agent.asrydian}`,
+    `Local entries: ${readLocalEntries().length}`
+  ].join("\n");
+}
+function renderLocalEntryList(){
+  const el=document.getElementById("localEntryList");
+  if(!el)return;
+  const entries=readLocalEntries();
+  el.innerHTML=entries.length?entries.map((x,i)=>`
+    <div class="lab-item">
+      <strong>${escapeHtml(x.English||"")}</strong> → ${escapeHtml(x["Asrydian / Asmonian"]||"")}
+      <br><small>${escapeHtml([x.Category,x["Grammar / Form"]].filter(Boolean).join(" · "))}</small>
+      <div class="lab-actions">
+        <button type="button" class="clear local-delete-entry" data-index="${i}">Delete</button>
+      </div>
+    </div>`).join(""):'<div class="lab-item">No local entries yet.</div>';
+}
+function renderUnknownWordList(){
+  const el=document.getElementById("unknownWordList");
+  if(!el)return;
+  let words=[];
+  try{words=JSON.parse(localStorage.getItem(UNKNOWN_WORDS_KEY)||"[]")||[]}catch{}
+  words.sort((a,b)=>(b.count||0)-(a.count||0));
+  el.innerHTML=words.length?words.map(x=>`
+    <div class="lab-item"><strong>${escapeHtml(x.word)}</strong>
+    <br><small>Seen ${x.count||1} time${(x.count||1)===1?"":"s"}</small>
+    <button type="button" class="clear use-unknown-word" data-word="${escapeHtml(x.word)}" style="margin-top:7px">Add Entry</button>
+    </div>`).join(""):'<div class="lab-item">No unknown English words recorded.</div>';
+}
+function asrydianSuggestionSeeds(concept){
+  const clean=normalizeLookupText(concept).replace(/[^a-z]/g,"");
+  if(!clean)return [];
+  const consonants=(clean.match(/[bcdfghjklmnpqrstvwxyz]/g)||["v","r"]);
+  const vowels=(clean.match(/[aeiouy]/g)||["a","e"]);
+  const c1=consonants[0]||"v", c2=consonants[1]||"r";
+  const v1=vowels[0]||"a", v2=vowels[1]||"e";
+  const forms=[
+    `${c1}${v1}${c2}${v2}l`,
+    `${c1}r${v1}${c2}a`,
+    `${c1}${v1}th${c2}en`,
+    `${c1}l${v2}${c2}ar`,
+    `${c1}${v1}${c2}ai`
+  ];
+  return [...new Set(forms.map(capitalizeFirstLetter))].slice(0,5);
+}
+function downloadTextFile(filename,text,type="application/json"){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+function setupLanguageLab(){
+  renderEngineRuleSummary();renderLocalEntryList();renderUnknownWordList();
+
+  document.getElementById("saveLocalEntry")?.addEventListener("click",()=>{
+    const entry={
+      English:document.getElementById("labEnglish").value.trim(),
+      "Asrydian / Asmonian":document.getElementById("labAsrydian").value.trim(),
+      Category:document.getElementById("labCategory").value.trim(),
+      Root:document.getElementById("labRoot").value.trim(),
+      Pronunciation:document.getElementById("labPronunciation").value.trim(),
+      "Grammar / Form":document.getElementById("labGrammar").value.trim(),
+      Notes:document.getElementById("labNotes").value.trim()
+    };
+    if(!entry.English||!entry["Asrydian / Asmonian"]){
+      alert("English and Asrydian are required.");return;
+    }
+    const entries=readLocalEntries();
+    const key=normalizeLookupText(entry.English);
+    const existing=entries.findIndex(x=>normalizeLookupText(x.English)===key);
+    if(existing>=0)entries[existing]=entry;else entries.push(entry);
+    saveLocalEntries(entries);
+    mergeLocalEntries();populateCategories();renderLocalEntryList();renderEngineRuleSummary();render();
+  });
+
+  document.getElementById("clearLabEntry")?.addEventListener("click",()=>{
+    ["labEnglish","labAsrydian","labCategory","labRoot","labPronunciation","labGrammar","labNotes"]
+      .forEach(id=>document.getElementById(id).value="");
+  });
+
+  document.getElementById("localEntryList")?.addEventListener("click",event=>{
+    const btn=event.target.closest(".local-delete-entry");if(!btn)return;
+    const entries=readLocalEntries();entries.splice(Number(btn.dataset.index),1);
+    saveLocalEntries(entries);location.reload();
+  });
+
+  document.getElementById("unknownWordList")?.addEventListener("click",event=>{
+    const btn=event.target.closest(".use-unknown-word");if(!btn)return;
+    document.getElementById("labEnglish").value=btn.dataset.word||"";
+    document.querySelector('[data-tab="languageLab"]')?.scrollIntoView({behavior:"smooth"});
+  });
+
+  document.getElementById("clearUnknownWords")?.addEventListener("click",()=>{
+    localStorage.removeItem(UNKNOWN_WORDS_KEY);renderUnknownWordList();
+  });
+
+  document.getElementById("suggestWordsBtn")?.addEventListener("click",()=>{
+    const concept=document.getElementById("conceptInput").value.trim();
+    const category=document.getElementById("conceptCategory").value;
+    const suggestions=asrydianSuggestionSeeds(concept);
+    document.getElementById("wordSuggestions").textContent=suggestions.length
+      ? `Draft suggestions for “${concept}” (${category}):\n\n${suggestions.map((x,i)=>`${i+1}. ${x}`).join("\n")}\n\nThese are pattern-based drafts, not official vocabulary.`
+      :"Enter an English concept first.";
+  });
+
+  document.getElementById("exportEngineData")?.addEventListener("click",()=>{
+    downloadTextFile("asrydian-language-data-v4.json",JSON.stringify({
+      exportedAt:new Date().toISOString(),
+      engine:ASRYDIAN_ENGINE,
+      localEntries:readLocalEntries(),
+      unknownWords:JSON.parse(localStorage.getItem(UNKNOWN_WORDS_KEY)||"[]")
+    },null,2));
+  });
+
+  document.getElementById("resetLocalLanguageData")?.addEventListener("click",()=>{
+    if(!confirm("Delete all locally saved dictionary entries and review data?"))return;
+    localStorage.removeItem(LOCAL_ENTRIES_KEY);
+    localStorage.removeItem(UNKNOWN_WORDS_KEY);
+    location.reload();
+  });
+}
+
 let pronunciationRules = [];
 let latestCombinedTranslation = "";
 const SHEET_ID = "1G_9jYq_G88jC6eUKOyz8hSekGLLuVrwRAPSQQ-UGnmE";
@@ -435,7 +778,7 @@ const LIVE_REFERENCE_TABS = {
   numbers: ["Number Rules", "Numbers", "NUMBER RULES"],
   review: ["Needs Review", "Review", "NEEDS REVIEW"]
 };
-const grammarData = [{"Rule": "Plural ending", "English Form": "English plural / -s", "Asrydian Form": "-t", "Explanation": "A final T marks a plural word.", "Example": "Hammer → Hammers: Myolthde → Myolthdet"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to the word.", "Example": "Do → Doing: Lul → Luleif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
+const grammarData = [{"Rule": "Plural / present-s ending", "English Form": "Plural nouns or third-person singular verbs / -s", "Asrydian Form": "-t", "Explanation": "Attach T for regular English plural nouns and present-tense verb forms such as says.", "Example": "Hammer → Hammers: Myolthde → Myolthdet; Say → Says: Umfer → Umfert"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to the word.", "Example": "Do → Doing: Lul → Luleif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
 const pronunciationData = [{"Written Pattern": "S at the beginning or end of a word", "Sound": "S", "Rule": "Pronounced as a normal S sound."}, {"Written Pattern": "S inside a word", "Sound": "Sh", "Rule": "Pronounced as an SH sound."}, {"Written Pattern": "K next to E", "Sound": "Ch", "Rule": "The pair makes a CH sound."}, {"Written Pattern": "K next to L", "Sound": "C", "Rule": "The pair makes a C sound."}, {"Written Pattern": "’e", "Sound": "Silent", "Rule": "The ’e sequence is silent."}, {"Written Pattern": "ľ", "Sound": "Silent", "Rule": "The letter ľ is silent."}, {"Written Pattern": "G", "Sound": "Guh or Juh", "Rule": "The speaker may choose either pronunciation."}];
 const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe golrsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
 const numberRulesData = [{"Unit": "Hundreds", "Range": "100–999", "Unit Word": "Thradek", "Formation Pattern": "(1–9) + Thradek", "Notes": "100 = Thradek; larger hundreds use a number before the unit."}, {"Unit": "Thousands", "Range": "1,000–999,999", "Unit Word": "Kentrafa", "Formation Pattern": "(number under 1,000) + Kentrafa", "Notes": "Largest unit is spoken first."}, {"Unit": "Millions", "Range": "1,000,000–999,999,999", "Unit Word": "Mireth", "Formation Pattern": "(number under 1,000) + Mireth", "Notes": "Largest unit is spoken first."}, {"Unit": "Billions", "Range": "1,000,000,000–999,999,999,999", "Unit Word": "Thrathethal", "Formation Pattern": "(number under 1,000) + Thrathethal", "Notes": "Largest unit is spoken first."}, {"Unit": "Trillions", "Range": "1,000,000,000,000+", "Unit Word": "Thrathethalen", "Formation Pattern": "(number under 1,000) + Thrathethalen", "Notes": "Largest unit is spoken first."}, {"Unit": "Universal Large Number Law", "Range": "", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "1", "Range": "Always speak the largest unit first.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "2", "Range": "Never reverse the order.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "3", "Range": "Never use a word for “and” inside a number.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "4", "Range": "Each large unit behaves like a multiplier.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "5", "Range": "Asrydian numbers are written in letter form only, not with digits.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}];
@@ -718,6 +1061,48 @@ function englishPresentParticiple(word){
   return value + "ing";
 }
 
+function englishThirdPersonSingular(word){
+  const value = String(word || "").trim();
+  const lower = value.toLowerCase();
+  const irregular = {
+    "be":"is",
+    "have":"has",
+    "do":"does",
+    "go":"goes",
+    "say":"says"
+  };
+  if(irregular[lower]) return irregular[lower];
+  if(/[^aeiou]y$/i.test(value)) return value.slice(0, -1) + "ies";
+  if(/(s|sh|ch|x|z|o)$/i.test(value)) return value + "es";
+  return value + "s";
+}
+
+function englishThirdPersonBaseCandidates(word){
+  const lower = normalizeLookupText(word);
+  const irregular = {
+    "is":"be",
+    "has":"have",
+    "does":"do",
+    "goes":"go",
+    "says":"say"
+  };
+  if(irregular[lower]) return [irregular[lower]];
+
+  const candidates = [];
+  if(lower.endsWith("ies") && lower.length > 3){
+    candidates.push(lower.slice(0, -3) + "y");
+  }
+  if(lower.endsWith("es") && lower.length > 2){
+    candidates.push(lower.slice(0, -2));
+    candidates.push(lower.slice(0, -1));
+  }
+  if(lower.endsWith("s") && !lower.endsWith("ss") && lower.length > 1){
+    candidates.push(lower.slice(0, -1));
+  }
+
+  return [...new Set(candidates.filter(Boolean))];
+}
+
 function englishPastTense(word){
   const value = String(word || "").trim();
   const lower = value.toLowerCase();
@@ -725,7 +1110,7 @@ function englishPastTense(word){
     "be":"was", "go":"went", "run":"ran", "sleep":"slept", "know":"knew",
     "see":"saw", "take":"took", "make":"made", "bring":"brought",
     "think":"thought", "feel":"felt", "get":"got", "do":"did", "have":"had",
-    "read":"read", "fight":"fought", "come":"came"
+    "read":"read", "fight":"fought", "come":"came", "say":"said"
   };
   if(irregular[lower]) return irregular[lower];
   if(/e$/i.test(value)) return value + "d";
@@ -755,7 +1140,8 @@ function englishPastBaseCandidates(word){
     "was":"be", "were":"be", "went":"go", "ran":"run", "slept":"sleep",
     "knew":"know", "saw":"see", "took":"take", "made":"make",
     "brought":"bring", "thought":"think", "felt":"feel", "got":"get",
-    "did":"do", "had":"have", "fought":"fight", "came":"come"
+    "did":"do", "had":"have", "fought":"fight", "came":"come",
+    "said":"say"
   };
   if(irregular[lower]) return [irregular[lower]];
 
@@ -925,7 +1311,7 @@ function verbPastClass(entry){
   return "NORMAL";
 }
 
-function derivedPluralEntryFor(token, source){
+function derivedTFormEntryFor(token, source){
   if(source !== "Asrydian / Asmonian") return null;
   const normalized = normalizeLookupText(token);
   if(!normalized.endsWith("t") || normalized.length < 2) return null;
@@ -933,13 +1319,27 @@ function derivedPluralEntryFor(token, source){
   const base = directEntryFor(normalized.slice(0, -1), source);
   if(!base?.English) return null;
 
+  const baseEnglish = String(base.English).split(/\s*\/\s*/)[0];
+  const verbForm = isVerbEntry(base);
+
   return {
     ...base,
-    English: pluralizeEnglishTranslation(base.English),
+    English: verbForm
+      ? englishThirdPersonSingular(baseEnglish)
+      : pluralizeEnglishTranslation(base.English),
     "Asrydian / Asmonian": token,
-    "Grammar / Form": [base["Grammar / Form"], "Derived plural (-t)"].filter(Boolean).join("; "),
-    Notes: [base.Notes, `Automatically derived from ${base["Asrydian / Asmonian"]}`].filter(Boolean).join("; "),
-    __derivedPlural: true
+    "Grammar / Form": [
+      base["Grammar / Form"],
+      verbForm
+        ? "Derived third-person singular (-t)"
+        : "Derived plural (-t)"
+    ].filter(Boolean).join("; "),
+    Notes: [
+      base.Notes,
+      `Automatically derived from ${base["Asrydian / Asmonian"]}`
+    ].filter(Boolean).join("; "),
+    __derivedThirdPerson: verbForm,
+    __derivedPlural: !verbForm
   };
 }
 
@@ -989,6 +1389,23 @@ function derivedAsrydianVerbEntry(token){
 }
 
 function derivedEnglishVerbEntry(token){
+  const thirdPersonCandidates = englishThirdPersonBaseCandidates(token);
+  for(const candidate of thirdPersonCandidates){
+    const base = directEntryFor(candidate, "English");
+    if(base?.["Asrydian / Asmonian"] && isVerbEntry(base)){
+      return {
+        ...base,
+        English: token,
+        "Asrydian / Asmonian": `${base["Asrydian / Asmonian"]}t`,
+        "Grammar / Form": [
+          base["Grammar / Form"],
+          "Derived third-person singular (-t)"
+        ].filter(Boolean).join("; "),
+        __derivedThirdPerson: true
+      };
+    }
+  }
+
   const ingCandidates = englishIngBaseCandidates(token);
   for(const candidate of ingCandidates){
     const base = directEntryFor(candidate, "English");
@@ -1033,7 +1450,7 @@ function exactEntryFor(token, source, options={allowDerived:true}){
   if(options.allowDerived === false) return null;
 
   if(source === "Asrydian / Asmonian"){
-    return derivedAsrydianVerbEntry(token) || derivedPluralEntryFor(token, source);
+    return derivedAsrydianVerbEntry(token) || derivedTFormEntryFor(token, source);
   }
   if(source === "English"){
     return derivedEnglishVerbEntry(token);
@@ -1879,7 +2296,9 @@ function setTranslationQuality(built, contextApplied){
   else if(built.autocorrections?.length){label="Input autocorrected";cls="quality-context";}
   else if(!built.exact&&contextApplied){label="Context applied";cls="quality-context";}
   else if(!built.exact){label="Generated or word-by-word translation";cls="quality-generated";}
-  el.innerHTML=`<span class="quality-pill ${cls}"><span class="quality-dot"></span><span>${escapeHtml(label)}</span></span>`;
+  const confidence=translationConfidence(built,contextApplied);
+  el.innerHTML=`<span class="quality-pill ${cls}"><span class="quality-dot"></span><span>${escapeHtml(label)} · ${confidence}% confidence</span></span>
+  <div class="confidence-meter" title="${confidence}% confidence" style="width:150px"><span style="width:${confidence}%"></span></div>`;
 }
 function applyMainPreferenceVisibility(){
   const prefs=mainPreferences();
@@ -1895,7 +2314,7 @@ function renderPhraseBuilder(q,source,target){
     /[\p{L}\p{M}0-9]/u.test(token)
   ).length;
 
-  if(wordCount<2){
+  if(wordCount<2 && !mainPreferences().debugMode){
     latestCombinedTranslation="";
     phraseBuilder.classList.add("hidden");
     phraseOutput.innerHTML="";
@@ -1926,7 +2345,7 @@ function renderPhraseBuilder(q,source,target){
     name:"Grammar Roles",
     detail:built.grammar?.length
       ? built.grammar.map(item=>
-          `${item.token} → ${item.role} → ${item.translation}`
+          `${item.token} → ${item.role} → ${item.translation}${item.entry?.["Grammar / Form"] ? ` [${item.entry["Grammar / Form"]}]` : ""}`
         ).join("\n")
       : "No recognized words to grammarize"
   });
@@ -1999,6 +2418,11 @@ function renderPhraseBuilder(q,source,target){
   renderTranslationDebug(debugStages);
   try{
     applyMainPreferenceVisibility();
+
+    const copyRow=document.querySelector(".copy-translation-row");
+    const copyButton=document.getElementById("copyCombinedTranslation");
+    if(copyRow) copyRow.style.display="";
+    if(copyButton) copyButton.style.display="";
   }catch(error){
     console.warn("Preference visibility update failed:",error);
   }
@@ -2145,7 +2569,8 @@ function render(){
   }
 
   translationBox.value = attempted.plain || "";
-  setPronunciationHelp(attempted.pronunciation || "");
+  setPronunciationHelp(attempted.pronunciation || (target==="Asrydian / Asmonian" ? generatedPronunciation(attempted.plain) : ""));
+  collectUnknownWords(attempted.unknown||[], source);
 
   try{
     renderPhraseBuilder(q,source,target);
@@ -2402,12 +2827,12 @@ function renderLessonsTab(rows){
 
 function renderReviewTab(rows){
   document.getElementById("review").innerHTML =
-    '<div class="warning"><h2>Spellings or meanings to confirm</h2><p>This table is loaded live from the Google Sheet.</p></div>';
+    '<div class="warning"><h2>Spellings or meanings to confirm</h2><p>Only entries from the live Needs Review sheet appear here.</p></div>';
   const holder = document.createElement("div");
   document.getElementById("review").appendChild(holder);
 
   if(!rows.length){
-    holder.innerHTML = '<div class="empty">No review rows found.</div>';
+    holder.innerHTML = '<div class="empty"><strong>No items currently need review.</strong><br>The live Needs Review sheet is empty.</div>';
     return;
   }
 
@@ -2424,7 +2849,46 @@ function renderFallbackReferenceTabs(){
   renderReviewTab(reviewData);
 }
 
-async function fetchSheetCandidates(candidates, cacheBust){
+function normalizedHeaders(rows){
+  return (rows?.[0] || [])
+    .map(header => normalizeLookupText(header))
+    .filter(Boolean);
+}
+
+function referenceSheetMatches(key, rows){
+  const headers = normalizedHeaders(rows);
+  if(!headers.length) return false;
+
+  const hasAny = names => names.some(name => headers.includes(normalizeLookupText(name)));
+
+  if(key === "review"){
+    const hasTopic = hasAny(["English / Topic", "English", "Topic"]);
+    const hasReviewField = hasAny([
+      "Version A", "Version B", "Reason", "Status",
+      "Issue", "Notes", "Decision", "Resolution"
+    ]);
+    return hasTopic && hasReviewField;
+  }
+
+  if(key === "grammar"){
+    return hasAny(["Rule", "English Form", "Asrydian Form", "Explanation"]);
+  }
+  if(key === "pronunciation"){
+    return hasAny(["Written Pattern", "Sound", "Pronunciation", "Rule"]);
+  }
+  if(key === "lessons"){
+    return hasAny(["Lesson"]) &&
+      hasAny(["English", "English / Topic"]) &&
+      hasAny(["Asrydian", "Asrydian / Asmonian"]);
+  }
+  if(key === "numbers"){
+    return hasAny(["Unit", "Range", "Unit Word", "Formation Pattern"]);
+  }
+
+  return true;
+}
+
+async function fetchSheetCandidates(key, candidates, cacheBust){
   let lastError = null;
 
   for(const sheetName of candidates){
@@ -2436,9 +2900,20 @@ async function fetchSheetCandidates(candidates, cacheBust){
       }
 
       const rows = parseCSV(await response.text());
+
+      // Google Sheets may silently return the first sheet when a requested
+      // tab name is invalid. Reject data whose columns do not match the
+      // requested reference tab.
+      if(!referenceSheetMatches(key, rows)){
+        lastError = new Error(`${sheetName}: returned columns do not match the ${key} tab`);
+        continue;
+      }
+
       const objects = rowsToObjects(rows);
-      if(objects.length) return {sheetName, rows, objects};
-      lastError = new Error(`${sheetName}: no table rows found`);
+
+      // A header-only Needs Review sheet is valid and means there are no
+      // outstanding review items. Do not fall through to another sheet.
+      return {sheetName, rows, objects};
     }catch(error){
       lastError = error;
     }
@@ -2450,7 +2925,7 @@ async function fetchSheetCandidates(candidates, cacheBust){
 async function loadLiveReferenceTabs(cacheBust){
   const tasks = Object.entries(LIVE_REFERENCE_TABS).map(async ([key, candidates]) => {
     try{
-      const loaded = await fetchSheetCandidates(candidates, cacheBust);
+      const loaded = await fetchSheetCandidates(key, candidates, cacheBust);
 
       if(key === "grammar") renderGrammarTab(loaded.objects);
       if(key === "pronunciation"){
@@ -3139,6 +3614,7 @@ async function loadLiveDictionary(){
 
       return item;
     }).filter(x => String(x["English"]||"").trim() || String(x["Asrydian / Asmonian"]||"").trim());
+    mergeLocalEntries();
     populateCategories();
     document.querySelector(".badge").textContent = `${dictionary.length} live entries`;
     render();
@@ -3157,12 +3633,13 @@ async function loadLiveDictionary(){
     </div>`;
   }
 }
+setupLanguageLab();
 loadLiveDictionary();
 </script>
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 3.2</div>
+padding:6px 9px;font-size:12px;">Version 4.1</div>
 
 </body>
 </html>
