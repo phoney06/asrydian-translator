@@ -602,7 +602,7 @@ function buildPronunciationGuide(text, source){
     if(exactPronunciation) return exactPronunciation;
   }
 
-  const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
+  const tokens = translationTokens(text);
   const parts = [];
 
   for(const token of tokens){
@@ -1234,7 +1234,9 @@ function usesAnArticle(word){
 function contextualArticleTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
   if(source !== "Asrydian / Asmonian" || target !== "English") return null;
 
-  const asrydian = normalizedSourceWord;
+  const asrydian = normalizeLookupText(
+    entry?.["Asrydian / Asmonian"] || sourceToken
+  );
   const options = englishAliasOptions(entry).map(normalizeLookupText);
   const isArticle = asrydian === "fohl" || (options.includes("a") && options.includes("an"));
   if(!isArticle) return null;
@@ -1256,6 +1258,202 @@ function contextualArticleTranslation(entry, sourceToken, tokens, tokenIndex, so
   return usesAnArticle(nextEnglish) ? "an" : "a";
 }
 
+
+function contextualMaiTranslation(tokens, tokenIndex){
+  if(!Array.isArray(tokens)) return "no";
+
+  const nextInfo=nextWordToken(tokens,tokenIndex);
+  const previousInfo=previousWordToken(tokens,tokenIndex);
+
+  // Mai by itself, at the beginning/end of a short response, or surrounded
+  // only by punctuation is the answer/interjection "no".
+  if(!nextInfo) return "no";
+
+  const meaningfulWords=tokens.filter(token=>
+    !isProtectedChatToken(token) &&
+    /[\p{L}\p{M}0-9]/u.test(token)
+  );
+
+  if(meaningfulWords.length<=1) return "no";
+
+  // When Mai directly modifies another word, use the English modifier "non".
+  // Example structure: Mai + [noun/adjective/title] → non [word].
+  return "non";
+}
+
+
+function grammarMetadata(entry){
+  return normalizeLookupText(
+    `${entry?.Category||""} ${entry?.["Grammar / Form"]||""} ${entry?.Notes||""}`
+  );
+}
+
+function grammarRoleForEntry(entry,translated=""){
+  if(!entry) return "unknown";
+
+  const metadata=grammarMetadata(entry);
+  const english=normalizeLookupText(entry?.English||translated||"");
+
+  if(metadata.includes("proper noun")||metadata.includes("proper name")) return "proper-noun";
+  if(metadata.includes("title")||metadata.includes("honorific")||metadata.includes("role")) return "title";
+  if(metadata.includes("pronoun")) return "pronoun";
+  if(metadata.includes("article")||["a","an","the"].includes(english)) return "article";
+  if(metadata.includes("conjunction")) return "conjunction";
+  if(metadata.includes("preposition")) return "preposition";
+  if(metadata.includes("adverb")) return "adverb";
+  if(metadata.includes("adjective")||metadata.includes("state")) return "adjective";
+  if(metadata.includes("verb")||metadata.includes("tense")||metadata.includes("participle")) return "verb";
+  if(metadata.includes("number")||numberFormsForEntry(entry)) return "number";
+  if(metadata.includes("noun")||metadata.includes("person")||metadata.includes("place")) return "noun";
+
+  const pronouns=new Set([
+    "i","me","my","mine","you","your","yours","he","him","his","she","her",
+    "hers","it","its","we","us","our","ours","they","them","their","theirs"
+  ]);
+  if(pronouns.has(english)) return "pronoun";
+
+  const commonVerbs=new Set([
+    "am","is","are","was","were","be","been","being","have","has","had",
+    "do","does","did","go","get","make","take","say","know","think","see",
+    "come","want","use","find","give","tell","work","call","try","ask",
+    "need","feel","become","leave","put","mean","keep","let","begin","seem",
+    "help","talk","turn","start","show","hear","play","run","move","live",
+    "believe","bring","happen","write","sit","stand","lose","meet","continue",
+    "learn","change","understand","watch","follow","stop","create","speak",
+    "read","walk","win","remember","love","buy","wait","serve","die","send",
+    "build","stay","fall","fight","eat","pray","raid","look","hide","trust",
+    "protect","join","push","upgrade","split","agree","disagree"
+  ]);
+  if(commonVerbs.has(english)) return "verb";
+
+  return "noun";
+}
+
+function isMeaningfulTranslationToken(token){
+  return !isProtectedChatToken(token)&&/[\p{L}\p{M}0-9]/u.test(String(token||""));
+}
+
+function buildGrammarTokenInfos(tokens,source,target){
+  return tokens.map((token,index)=>{
+    const meaningful=isMeaningfulTranslationToken(token);
+    let entry=null;
+
+    if(meaningful){
+      try{
+        entry=exactEntryFor(token,source);
+      }catch(error){
+        console.warn("Grammar lookup failed:",token,error);
+      }
+    }
+
+    const raw=entry?String(entry[target]||""):"";
+    return {
+      token,index,meaningful,
+      protected:isProtectedChatToken(token),
+      entry,raw,
+      role:grammarRoleForEntry(entry,raw),
+      translation:raw
+    };
+  });
+}
+
+function previousGrammarWord(infos,index){
+  for(let i=index-1;i>=0;i--){
+    if(infos[i]?.meaningful) return infos[i];
+  }
+  return null;
+}
+
+function nextGrammarWord(infos,index){
+  for(let i=index+1;i<infos.length;i++){
+    if(infos[i]?.meaningful) return infos[i];
+  }
+  return null;
+}
+
+function isGrammarSentenceStart(infos,index){
+  for(let i=index-1;i>=0;i--){
+    const info=infos[i];
+    if(info?.protected) continue;
+    const value=String(info?.token||"");
+    if(/^\s+$/.test(value)) continue;
+    if(/^[“‘"'([{]+$/.test(value)) continue;
+    return /[.!?]\s*$/.test(value);
+  }
+  return true;
+}
+
+function clauseFollows(infos,index){
+  const next=nextGrammarWord(infos,index);
+  if(!next) return false;
+  if(next.role==="pronoun"||next.role==="verb") return true;
+
+  const afterNext=nextGrammarWord(infos,next.index);
+  return Boolean(afterNext&&afterNext.role==="verb");
+}
+
+function grammarizedMai(infos,index){
+  const next=nextGrammarWord(infos,index);
+  if(!next) return "no";
+
+  if(isGrammarSentenceStart(infos,index)||clauseFollows(infos,index)){
+    return "no,";
+  }
+
+  if(["noun","adjective","title","proper-noun"].includes(next.role)){
+    return "non";
+  }
+
+  return "no";
+}
+
+function grammarizeToken(info,infos,source,target){
+  if(!info?.entry) return info?.token||"";
+
+  const sourceNorm=normalizeLookupText(info.entry?.[source]||info.token);
+  let translated=String(info.entry?.[target]||"");
+
+  if(source==="Asrydian / Asmonian"&&target==="English"){
+    if(sourceNorm==="mai"){
+      translated=grammarizedMai(infos,info.index);
+    }else{
+      translated=contextualEnglishTranslation(
+        info.entry,
+        info.token,
+        infos.map(item=>item.token),
+        info.index,
+        source,
+        target
+      );
+    }
+  }
+
+  return formatTranslatedCapitalization(
+    info.entry,
+    info.token,
+    translated,
+    infos.map(item=>item.token),
+    info.index
+  );
+}
+
+function grammarizePhraseTokens(tokens,source,target){
+  const infos=buildGrammarTokenInfos(tokens,source,target);
+
+  for(const info of infos){
+    if(!info.entry) continue;
+
+    try{
+      info.translation=grammarizeToken(info,infos,source,target);
+    }catch(error){
+      console.warn("Grammar resolution failed:",info.token,error);
+      info.translation=info.raw||info.token;
+    }
+  }
+
+  return infos;
+}
+
 function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
   const rawTranslation = String(entry?.[target] || "");
   if(source !== "Asrydian / Asmonian" || target !== "English"){
@@ -1267,7 +1465,7 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
   );
 
   if(normalizedSourceWord === "mai"){
-    return "no / non";
+    return contextualMaiTranslation(tokens,tokenIndex);
   }
 
   const contextualArticle = contextualArticleTranslation(
@@ -1388,66 +1586,100 @@ function translatedTokenValue(entry, token, tokens, tokenIndex, source, target){
   );
 }
 
-function buildLiteralPhrase(text, source, target){
-  const exact = exactEntryFor(text, source);
-  if(exact){
-    let exactTranslation = String(exact[target] || "");
 
-    if(
-      source === "Asrydian / Asmonian" &&
-      target === "English" &&
-      normalizeLookupText(text) === "mai"
-    ){
-      exactTranslation = "no / non";
-    }
+function isProtectedChatToken(token){
+  const value=String(token||"");
+  return (
+    /^<@!?\d+>$/.test(value) ||          // Discord user mention
+    /^<@&\d+>$/.test(value) ||           // Discord role mention
+    /^<#\d+>$/.test(value) ||            // Discord channel mention
+    /^<a?:[A-Za-z0-9_]+:\d+>$/.test(value) || // Discord custom emoji
+    /^https?:\/\/\S+$/i.test(value) ||   // URL
+    /^@(everyone|here)$/i.test(value)
+  );
+}
+
+function translationTokens(text){
+  return String(text).match(
+    /<@!?\d+>|<@&\d+>|<#\d+>|<a?:[A-Za-z0-9_]+:\d+>|https?:\/\/\S+|@(everyone|here)|[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/giu
+  ) || [];
+}
+
+function buildLiteralPhrase(text,source,target){
+  const tokens=translationTokens(text);
+  const infos=grammarizePhraseTokens(tokens,source,target);
+  const exact=exactEntryFor(text,source);
+
+  if(exact){
+    const exactInfo=infos.find(info=>info.entry);
+    const exactTranslation=exactInfo
+      ? exactInfo.translation
+      : String(exact[target]||"");
 
     return {
-      html: escapeHtml(exactTranslation),
-      plain: exactTranslation,
-      unknown: [],
-      autocorrections: [],
-      exact: true,
-      pronunciation: pronunciationFor(exact)
+      html:escapeHtml(exactTranslation),
+      plain:exactTranslation,
+      unknown:[],
+      autocorrections:[],
+      exact:true,
+      pronunciation:pronunciationFor(exact),
+      grammar:infos.filter(info=>info.entry).map(info=>({
+        token:info.token,
+        role:info.role,
+        translation:info.translation
+      }))
     };
   }
 
-  const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
-  const unknown = [];
-  const autocorrections = [];
-  const rendered = [];
-  const plain = [];
+  const unknown=[];
+  const autocorrections=[];
+  const rendered=[];
+  const plain=[];
 
-  for(let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++){
-    const token = tokens[tokenIndex];
-    if(/^\s+$/.test(token) || /^[^\p{L}\p{M}0-9]+$/u.test(token)){
+  for(const info of infos){
+    const token=info.token;
+
+    if(
+      info.protected||
+      /^\s+$/.test(token)||
+      /^[^\p{L}\p{M}0-9]+$/u.test(token)
+    ){
       rendered.push(escapeHtml(token));
       plain.push(token);
       continue;
     }
-    const correction = contractionCorrectionFor(token, source);
-    const found = exactEntryFor(token, source);
-    if(found && found[target]){
-      if(correction && normalizeLookupText(token) !== normalizeLookupText(correction)){
+
+    if(info.entry&&info.entry[target]){
+      const correction=contractionCorrectionFor(token,source);
+      if(correction&&normalizeLookupText(token)!==normalizeLookupText(correction)){
         autocorrections.push(`${token} → ${correction}`);
       }
-      const translated = translatedTokenValue(
-        found, correction || token, tokens, tokenIndex, source, target
-      );
-      rendered.push(`<span class="known-word">${escapeHtml(translated)}</span>`);
-      plain.push(translated);
-    } else {
+
+      rendered.push(`<span class="known-word">${escapeHtml(info.translation)}</span>`);
+      plain.push(info.translation);
+    }else{
       unknown.push(token);
-      rendered.push(`<span class="unknown-word" style="color:#ff3b4f;background:rgba(255,59,79,.18);border:1px solid rgba(255,59,79,.8);border-radius:7px;padding:1px 5px;display:inline-block;">${escapeHtml(token)}</span>`);
+      rendered.push(
+        `<span class="unknown-word" style="color:#ff3b4f;background:rgba(255,59,79,.18);border:1px solid rgba(255,59,79,.8);border-radius:7px;padding:1px 5px;display:inline-block;">${escapeHtml(token)}</span>`
+      );
       plain.push(token);
     }
   }
+
   return {
-    html: rendered.join(""),
-    plain: plain.join(""),
+    html:rendered.join(""),
+    plain:plain.join("")
+      .replace(/\s+([,.;:!?])/g,"$1")
+      .replace(/,([^\s])/g,", $1"),
     unknown,
     autocorrections,
     exact:false,
-    pronunciation: buildPronunciationGuide(text, source)
+    pronunciation:buildPronunciationGuide(text,source),
+    grammar:infos.filter(info=>info.entry).map(info=>({
+      token:info.token,
+      role:info.role,
+      translation:info.translation
+    }))
   };
 }
 
@@ -1649,7 +1881,11 @@ function applyMainPreferenceVisibility(){
 
 function renderPhraseBuilder(q,source,target){
   const trimmed=String(q||"").trim();
-  const wordCount=(trimmed.match(/[\p{L}\p{M}’']+|[0-9]+/gu)||[]).length;
+
+  const wordCount=translationTokens(trimmed).filter(token=>
+    !isProtectedChatToken(token) &&
+    /[\p{L}\p{M}0-9]/u.test(token)
+  ).length;
 
   if(wordCount<2){
     latestCombinedTranslation="";
@@ -1662,6 +1898,7 @@ function renderPhraseBuilder(q,source,target){
 
   const debugStages=[{name:"Input",detail:trimmed}];
   const built=buildLiteralPhrase(trimmed,source,target);
+  const containsProtectedChatToken=translationTokens(trimmed).some(isProtectedChatToken);
 
   debugStages.push({
     name:"Input Normalizer",
@@ -1677,6 +1914,15 @@ function renderPhraseBuilder(q,source,target){
       : `Raw output: ${built.plain}`
   });
 
+  debugStages.push({
+    name:"Grammar Roles",
+    detail:built.grammar?.length
+      ? built.grammar.map(item=>
+          `${item.token} → ${item.role} → ${item.translation}`
+        ).join("\n")
+      : "No recognized words to grammarize"
+  });
+
   const englishTarget=target==="English";
   let processedPlain=built.plain||"";
   let contextRules=[];
@@ -1684,7 +1930,7 @@ function renderPhraseBuilder(q,source,target){
   if(englishTarget){
     const contextResult=runEnglishContextEngine(processedPlain);
     processedPlain=contextResult.text;
-    contextRules=contextResult.rules;
+    contextRules=["Every recognized word passed through the grammar-role engine",...contextResult.rules];
 
     debugStages.push({
       name:"Context Engine",
@@ -1735,22 +1981,43 @@ function renderPhraseBuilder(q,source,target){
     phraseNote.textContent="Literal word-by-word translation. Word order and grammar may still need adjustment.";
   }
 
+  if(containsProtectedChatToken){
+    const chatNote="Discord mentions, tags, and chat metadata were preserved unchanged.";
+    phraseNote.textContent=phraseNote.textContent
+      ? `${phraseNote.textContent} ${chatNote}`
+      : chatNote;
+  }
+
   renderTranslationDebug(debugStages);
-  applyMainPreferenceVisibility();
+  try{
+    applyMainPreferenceVisibility();
+  }catch(error){
+    console.warn("Preference visibility update failed:",error);
+  }
 }
 
 
 
 function getPhraseParts(text, source, target){
-  const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+/gu) || [];
-  return tokens.map((token, index) => {
-    const entry = exactEntryFor(token, source);
+  const tokens=translationTokens(text).filter(token=>
+    !isProtectedChatToken(token) &&
+    /[\p{L}\p{M}0-9]/u.test(token)
+  );
+
+  return tokens.map((token,index)=>{
+    let entry=null;
+    try{
+      entry=exactEntryFor(token,source);
+    }catch(error){
+      console.warn("Could not create phrase part:",token,error);
+    }
+
     return {
       token,
       index,
       entry,
-      translation: entry
-        ? contextualEnglishTranslation(entry, token, tokens, index, source, target)
+      translation:entry
+        ? contextualEnglishTranslation(entry,token,tokens,index,source,target)
         : ""
     };
   });
@@ -1841,24 +2108,69 @@ function render(){
   const [source,target] = fieldNames();
   const mode=document.getElementById("matchMode").value;
   const cat=category.value;
-  let filtered=dictionary.filter(x => (!cat || x.Category===cat) && matches(x[source],q,mode));
+  const inputText=String(q||"");
+  const isPassage=inputText.length>140 || (inputText.match(/\s+/g)||[]).length>18;
+
+  let filtered=isPassage
+    ? []
+    : dictionary.filter(x => (!cat || x.Category===cat) && matches(x[source],q,mode));
   filtered=filtered.slice(0,100);
 
   // Always attempt a translation for whatever the user has typed.
   // Exact words and exact phrases take priority, even when the live-results
   // list also contains longer phrases using the same word.
-  const attempted = String(q || "").trim()
-    ? buildLiteralPhrase(String(q).trim(), source, target)
-    : {plain:"", pronunciation:""};
+  let attempted={plain:"",pronunciation:""};
+  if(String(q||"").trim()){
+    try{
+      attempted=buildLiteralPhrase(String(q).trim(),source,target);
+    }catch(error){
+      console.error("Translation attempt failed:",error);
+      attempted={
+        plain:String(q).trim(),
+        pronunciation:"",
+        unknown:[],
+        autocorrections:[],
+        exact:false,
+        html:escapeHtml(String(q).trim())
+      };
+    }
+  }
 
   translationBox.value = attempted.plain || "";
   setPronunciationHelp(attempted.pronunciation || "");
 
-  renderPhraseBuilder(q, source, target);
-  stats.textContent = q ? `${filtered.length} result${filtered.length===1?"":"s"} shown` : `Browse all ${dictionary.length} live entries`;
+  try{
+    renderPhraseBuilder(q,source,target);
+  }catch(error){
+    console.error("Combined translation panel failed:",error);
+    latestCombinedTranslation=attempted.plain||"";
+    phraseBuilder.classList.add("hidden");
+    phraseOutput.innerHTML="";
+    phraseNote.textContent="";
+    try{
+      renderTranslationDebug([
+        {
+          name:"Error",
+          detail:String(error?.message||error)
+        }
+      ]);
+    }catch(debugError){
+      console.warn("Debug panel also failed:",debugError);
+    }
+  }
+
+  stats.textContent=isPassage
+    ? "Passage mode: dictionary result cards hidden for faster translation"
+    : (q ? `${filtered.length} result${filtered.length===1?"":"s"} shown` : `Browse all ${dictionary.length} live entries`);
+
+  if(isPassage){
+    results.innerHTML="";
+    return;
+  }
+
   if(!filtered.length){
-    const partsHtml = renderPhraseParts(q, source, target);
-    results.innerHTML = partsHtml || '<div class="empty">No matching translation found.</div>';
+    const partsHtml=renderPhraseParts(q,source,target);
+    results.innerHTML=partsHtml||'<div class="empty">No matching translation found.</div>';
     return;
   }
   results.innerHTML=filtered.map(x=>`
@@ -1926,8 +2238,15 @@ function scheduleLiveRender(){
       render();
     }catch(error){
       console.error("Live translation failed:",error);
-      translationBox.value="Translation temporarily unavailable";
-      stats.textContent="A translation error occurred. Continue typing or reload the preview.";
+
+      // Preserve any translation already produced before an optional panel
+      // failed. Only show a fallback when no usable output exists.
+      if(!String(translationBox.value||"").trim()){
+        translationBox.value=String(query.value||"").trim();
+      }
+
+      stats.textContent=
+        "The main translation was preserved, but an optional display section encountered an error.";
     }
   });
 }
@@ -1937,11 +2256,23 @@ category.addEventListener("change",scheduleLiveRender);
 document.getElementById("matchMode").addEventListener("change",scheduleLiveRender);
 document.getElementById("clear").addEventListener("click",()=>{latestCombinedTranslation="";query.value="";translationBox.value="";setPronunciationHelp("");phraseBuilder.classList.add("hidden");render();query.focus();});
 document.getElementById("swap").addEventListener("click",()=>{
+  const previousInput=query.value;
+  const previousTranslation=translationBox.value;
+
   direction=direction==="en-as"?"as-en":"en-as";
   document.getElementById("leftLabel").textContent=direction==="en-as"?"English":"Asrydian";
   document.getElementById("rightLabel").textContent=direction==="en-as"?"Asrydian":"English";
-  query.placeholder=direction==="en-as"?"Type an English word or phrase...":"Type an Asrydian word or phrase...";
-  render();
+  query.placeholder=direction==="en-as"
+    ?"Type an English word or phrase..."
+    :"Type an Asrydian word or phrase...";
+
+  // Move the current translation into the input side when a usable
+  // translation exists. Otherwise preserve the original text.
+  query.value=String(previousTranslation||"").trim()
+    ? previousTranslation
+    : previousInput;
+  translationBox.value=previousInput;
+  scheduleLiveRender();
 });
 
 function simpleCards(data,titleField,bodyFields){
@@ -2813,7 +3144,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 2.3</div>
+padding:6px 9px;font-size:12px;">Version 3.1</div>
 
 </body>
 </html>
