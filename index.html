@@ -1397,7 +1397,7 @@ function grammarizedMai(infos,index){
   if(!next) return "no";
 
   if(isGrammarSentenceStart(infos,index)||clauseFollows(infos,index)){
-    return "no,";
+    return "no";
   }
 
   if(["noun","adjective","title","proper-noun"].includes(next.role)){
@@ -1670,6 +1670,8 @@ function buildLiteralPhrase(text,source,target){
     html:rendered.join(""),
     plain:plain.join("")
       .replace(/\s+([,.;:!?])/g,"$1")
+      .replace(/,{2,}/g,",")
+      .replace(/^((?:<[^>]+>\s*)?)no\s+(?=(?:i|you|he|she|it|we|they)\b)/i,"$1No, ")
       .replace(/,([^\s])/g,", $1"),
     unknown,
     autocorrections,
@@ -1824,6 +1826,12 @@ function runEnglishContextEngine(text){
     /(^|[.!?]\s+)(["“‘']?)([\p{L}\p{M}])/gu,
     (match,prefix,quote,letter)=>prefix+quote+letter.toUpperCase()
   );
+
+  output=output
+    .replace(/,{2,}/g,",")
+    .replace(/\s+,/g,",")
+    .replace(/,\s*,+/g,",")
+    .replace(/,([^\s])/g,", $1");
 
   return {text:output,rules};
 }
@@ -2255,9 +2263,19 @@ query.addEventListener("input",scheduleLiveRender);
 category.addEventListener("change",scheduleLiveRender);
 document.getElementById("matchMode").addEventListener("change",scheduleLiveRender);
 document.getElementById("clear").addEventListener("click",()=>{latestCombinedTranslation="";query.value="";translationBox.value="";setPronunciationHelp("");phraseBuilder.classList.add("hidden");render();query.focus();});
+
+function sanitizeSwapText(text){
+  return String(text||"")
+    .replace(/,{2,}/g,",")
+    .replace(/\s+,/g,",")
+    .replace(/,\s*,+/g,",")
+    .replace(/\s{2,}/g," ")
+    .trim();
+}
+
 document.getElementById("swap").addEventListener("click",()=>{
-  const previousInput=query.value;
-  const previousTranslation=translationBox.value;
+  const previousInput=sanitizeSwapText(query.value);
+  const previousTranslation=sanitizeSwapText(translationBox.value);
 
   direction=direction==="en-as"?"as-en":"en-as";
   document.getElementById("leftLabel").textContent=direction==="en-as"?"English":"Asrydian";
@@ -3144,7 +3162,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 3.1</div>
+padding:6px 9px;font-size:12px;">Version 3.2</div>
 
 </body>
 </html>
