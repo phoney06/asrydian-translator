@@ -1041,22 +1041,67 @@ function exactEntryFor(token, source, options={allowDerived:true}){
   return null;
 }
 
-function preserveCase(original, translated){
+function isSentenceStartToken(tokens, tokenIndex){
+  if(!Array.isArray(tokens)) return tokenIndex===0;
+  for(let i=tokenIndex-1;i>=0;i--){
+    const previous=String(tokens[i]||"");
+    if(/^\s+$/.test(previous)) continue;
+    if(/^[“‘"'([{]+$/.test(previous)) continue;
+    return /[.!?]\s*$/.test(previous);
+  }
+  return true;
+}
+
+function capitalizeFirstLetter(text){
+  return String(text||"").replace(
+    /[\p{L}\p{M}]/u,
+    letter=>letter.toUpperCase()
+  );
+}
+
+function isSpecialCapitalizedEntry(entry, translated){
+  const metadata=normalizeLookupText(
+    `${entry?.Category||""} ${entry?.["Grammar / Form"]||""} ${entry?.Notes||""}`
+  );
+  if(
+    metadata.includes("proper noun") ||
+    metadata.includes("proper name") ||
+    metadata.includes("title") ||
+    metadata.includes("honorific") ||
+    metadata.includes("deity") ||
+    metadata.includes("place name")
+  ) return true;
+
+  const english=normalizeLookupText(entry?.English||translated||"");
+  return new Set([
+    "majesty","highness","queen","king","empress","emperor","goddess","god",
+    "lord","lady","prince","princess","duke","duchess","commander","captain",
+    "asmonia","asrydian"
+  ]).has(english);
+}
+
+function formatTranslatedCapitalization(entry, original, translated, tokens, tokenIndex){
   if(!translated) return translated;
 
-  const letters = String(original).match(/[\p{L}\p{M}]/gu) || [];
-  const isMultiLetterAllCaps =
-    letters.length > 1 &&
-    original === original.toUpperCase() &&
-    original !== original.toLowerCase();
+  const value=String(translated);
+  const letters=String(original).match(/[\p{L}\p{M}]/gu)||[];
+  const isAllCaps=
+    letters.length>1 &&
+    String(original)===String(original).toUpperCase() &&
+    String(original)!==String(original).toLowerCase();
 
-  if(isMultiLetterAllCaps) return translated.toUpperCase();
+  if(isAllCaps) return value.toUpperCase();
 
-  if(original[0] && original[0] === original[0].toUpperCase()) {
-    return translated.charAt(0).toUpperCase() + translated.slice(1);
+  if(isSentenceStartToken(tokens,tokenIndex) || isSpecialCapitalizedEntry(entry,value)){
+    return capitalizeFirstLetter(value);
   }
 
-  return translated;
+  // Lowercase only the first translated letter. This avoids title-casing every
+  // word while preserving internal capitalization in names and abbreviations.
+  return value.replace(
+    /[\p{L}\p{M}]/u,
+    letter=>letter.toLowerCase()
+  );
 }
 
 function englishAliasOptions(entry){
@@ -1189,7 +1234,7 @@ function usesAnArticle(word){
 function contextualArticleTranslation(entry, sourceToken, tokens, tokenIndex, source, target){
   if(source !== "Asrydian / Asmonian" || target !== "English") return null;
 
-  const asrydian = normalizeLookupText(entry?.["Asrydian / Asmonian"] || sourceToken);
+  const asrydian = normalizedSourceWord;
   const options = englishAliasOptions(entry).map(normalizeLookupText);
   const isArticle = asrydian === "fohl" || (options.includes("a") && options.includes("an"));
   if(!isArticle) return null;
@@ -1215,6 +1260,14 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
   const rawTranslation = String(entry?.[target] || "");
   if(source !== "Asrydian / Asmonian" || target !== "English"){
     return rawTranslation;
+  }
+
+  const normalizedSourceWord = normalizeLookupText(
+    entry?.["Asrydian / Asmonian"] || sourceToken
+  );
+
+  if(normalizedSourceWord === "mai"){
+    return "no / non";
   }
 
   const contextualArticle = contextualArticleTranslation(
@@ -1330,19 +1383,33 @@ function translatedTokenValue(entry, token, tokens, tokenIndex, source, target){
   const contextual = contextualEnglishTranslation(
     entry, token, tokens, tokenIndex, source, target
   );
-  return preserveCase(token, contextual);
+  return formatTranslatedCapitalization(
+    entry, token, contextual, tokens, tokenIndex
+  );
 }
 
 function buildLiteralPhrase(text, source, target){
   const exact = exactEntryFor(text, source);
-  if(exact) return {
-    html: escapeHtml(exact[target] || ""),
-    plain: exact[target] || "",
-    unknown: [],
-    autocorrections: [],
-    exact: true,
-    pronunciation: pronunciationFor(exact)
-  };
+  if(exact){
+    let exactTranslation = String(exact[target] || "");
+
+    if(
+      source === "Asrydian / Asmonian" &&
+      target === "English" &&
+      normalizeLookupText(text) === "mai"
+    ){
+      exactTranslation = "no / non";
+    }
+
+    return {
+      html: escapeHtml(exactTranslation),
+      plain: exactTranslation,
+      unknown: [],
+      autocorrections: [],
+      exact: true,
+      pronunciation: pronunciationFor(exact)
+    };
+  }
 
   const tokens = String(text).match(/[\p{L}\p{M}’']+|[0-9]+|[^\s\p{L}\p{M}0-9]+|\s+/gu) || [];
   const unknown = [];
@@ -1515,6 +1582,16 @@ function runEnglishContextEngine(text){
     .replace(/[ \t]{2,}/g," ")
     .trim();
   if(output!==beforeFormatting)rules.push("Normalized punctuation spacing");
+
+  output=output.replace(
+    /\b(majesty|highness|queen|king|empress|emperor|goddess|god|lord|lady|prince|princess|duke|duchess|commander|captain)\b/gi,
+    word=>capitalizeFirstLetter(word.toLowerCase())
+  );
+
+  output=output.replace(
+    /(^|[.!?]\s+)(["“‘']?)([\p{L}\p{M}])/gu,
+    (match,prefix,quote,letter)=>prefix+quote+letter.toUpperCase()
+  );
 
   return {text:output,rules};
 }
@@ -1836,9 +1913,28 @@ async function copyCombinedResult(){
   }
 }
 document.getElementById("copyCombinedTranslation").addEventListener("click",copyCombinedResult);
-query.addEventListener("input",render);
-category.addEventListener("change",render);
-document.getElementById("matchMode").addEventListener("change",render);
+let pendingRenderFrame=0;
+
+function scheduleLiveRender(){
+  if(pendingRenderFrame){
+    cancelAnimationFrame(pendingRenderFrame);
+  }
+
+  pendingRenderFrame=requestAnimationFrame(()=>{
+    pendingRenderFrame=0;
+    try{
+      render();
+    }catch(error){
+      console.error("Live translation failed:",error);
+      translationBox.value="Translation temporarily unavailable";
+      stats.textContent="A translation error occurred. Continue typing or reload the preview.";
+    }
+  });
+}
+
+query.addEventListener("input",scheduleLiveRender);
+category.addEventListener("change",scheduleLiveRender);
+document.getElementById("matchMode").addEventListener("change",scheduleLiveRender);
 document.getElementById("clear").addEventListener("click",()=>{latestCombinedTranslation="";query.value="";translationBox.value="";setPronunciationHelp("");phraseBuilder.classList.add("hidden");render();query.focus();});
 document.getElementById("swap").addEventListener("click",()=>{
   direction=direction==="en-as"?"as-en":"en-as";
@@ -2717,7 +2813,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 2.1</div>
+padding:6px 9px;font-size:12px;">Version 2.3</div>
 
 </body>
 </html>
