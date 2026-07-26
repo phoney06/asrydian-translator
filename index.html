@@ -292,6 +292,20 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   .lab-card.full{grid-column:auto}
 }
 
+
+@media(max-width:760px){
+  .phrase-output .unknown-word{
+    display:inline-block !important;
+    color:#ff5263 !important;
+    background:rgba(255,59,79,.24) !important;
+    border:2px solid rgba(255,82,99,.95) !important;
+    border-radius:7px;
+    padding:2px 6px;
+    font-weight:900;
+    -webkit-text-fill-color:#ff5263;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -436,6 +450,9 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     <div class="lab-card">
       <h3>Engine Capabilities</h3>
       <div class="lab-output">
+        <span class="engine-badge">Unified word pipeline</span>
+        <span class="engine-badge">Capitalization normalization</span>
+        <span class="engine-badge">Conservative spelling</span>
         <span class="engine-badge">Automatic roots</span>
         <span class="engine-badge">-t forms</span>
         <span class="engine-badge">-eif continuous</span>
@@ -557,7 +574,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "4.3",
+  version: "5.0",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -865,7 +882,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 4.3"
+      example:"Manual connection test from Asrydian Translator Version 5.0"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -1149,6 +1166,8 @@ function pluralizeEnglishWord(word){
     plural = original.slice(0, -1) + "ies";
   } else if(/(s|x|z|ch|sh)$/i.test(original)){
     plural = original + "es";
+  } else if(/(?:potato|tomato|hero|echo)$/i.test(original)){
+    plural = original + "es";
   } else if(/(?:f|fe)$/i.test(original) && !/(roof|chef|chief)$/i.test(original)){
     plural = original.replace(/fe?$/i, "ves");
   } else {
@@ -1212,7 +1231,16 @@ function englishThirdPersonBaseCandidates(word){
     "has":"have",
     "does":"do",
     "goes":"go",
-    "says":"say"
+    "says":"say",
+    "people":"person",
+    "children":"child",
+    "men":"man",
+    "women":"woman",
+    "mice":"mouse",
+    "geese":"goose",
+    "teeth":"tooth",
+    "feet":"foot",
+    "oxen":"ox"
   };
   if(irregular[lower]) return [irregular[lower]];
 
@@ -1516,6 +1544,39 @@ function derivedAsrydianVerbEntry(token){
   return null;
 }
 
+function derivedEnglishPluralEntry(token){
+  const candidates = englishThirdPersonBaseCandidates(token);
+
+  for(const candidate of candidates){
+    const base = directEntryFor(candidate, "English");
+    if(!base?.["Asrydian / Asmonian"] || isVerbEntry(base)) continue;
+
+    // Confirm that the typed form is actually the expected English plural.
+    // This prevents arbitrary words ending in S from being reduced incorrectly.
+    const baseEnglish = String(base.English).split(/\s*\/\s*/)[0];
+    if(normalizeLookupText(pluralizeEnglishWord(baseEnglish)) !== normalizeLookupText(token)){
+      continue;
+    }
+
+    return {
+      ...base,
+      English: token,
+      "Asrydian / Asmonian": `${base["Asrydian / Asmonian"]}t`,
+      "Grammar / Form": [
+        base["Grammar / Form"],
+        "Derived plural (-t)"
+      ].filter(Boolean).join("; "),
+      Notes: [
+        base.Notes,
+        `Automatically derived from ${base.English}`
+      ].filter(Boolean).join("; "),
+      __derivedPlural: true
+    };
+  }
+
+  return null;
+}
+
 function derivedEnglishVerbEntry(token){
   const thirdPersonCandidates = englishThirdPersonBaseCandidates(token);
   for(const candidate of thirdPersonCandidates){
@@ -1572,18 +1633,156 @@ function derivedEnglishVerbEntry(token){
   return null;
 }
 
-function exactEntryFor(token, source, options={allowDerived:true}){
-  const direct = directEntryFor(token, source);
-  if(direct) return direct;
-  if(options.allowDerived === false) return null;
 
-  if(source === "Asrydian / Asmonian"){
-    return derivedAsrydianVerbEntry(token) || derivedTFormEntryFor(token, source);
+function editDistanceWithinOne(left,right){
+  const a=normalizeLookupText(left);
+  const b=normalizeLookupText(right);
+  if(a===b) return true;
+  if(Math.abs(a.length-b.length)>1) return false;
+
+  let i=0,j=0,differences=0;
+  while(i<a.length&&j<b.length){
+    if(a[i]===b[j]){
+      i++;j++;continue;
+    }
+    differences++;
+    if(differences>1)return false;
+
+    if(a.length>b.length)i++;
+    else if(b.length>a.length)j++;
+    else{i++;j++;}
   }
-  if(source === "English"){
-    return derivedEnglishVerbEntry(token);
+
+  if(i<a.length||j<b.length)differences++;
+  return differences<=1;
+}
+
+function conservativeSpellingCandidate(token,source){
+  if(source!=="English")return null;
+
+  const normalized=normalizeLookupText(token);
+  if(normalized.length<4 || !/^[a-z']+$/i.test(normalized))return null;
+
+  const matches=[];
+  for(const entry of dictionary){
+    for(const alias of entryAliases(entry.English)){
+      if(alias.includes(" ") || Math.abs(alias.length-normalized.length)>1)continue;
+      if(editDistanceWithinOne(normalized,alias)){
+        matches.push({alias,entry});
+      }
+    }
   }
-  return null;
+
+  // Auto-correct only when there is exactly one dictionary answer.
+  const uniqueEntries=[...new Set(matches.map(match=>match.entry))];
+  if(uniqueEntries.length!==1)return null;
+
+  const best=matches
+    .filter(match=>match.entry===uniqueEntries[0])
+    .sort((a,b)=>a.alias.length-b.alias.length)[0];
+
+  return best ? {token:best.alias,entry:best.entry} : null;
+}
+
+function resolveWordPipeline(token,source,options={}){
+  const allowDerived=options.allowDerived!==false;
+  const allowSpelling=options.allowSpelling!==false;
+  const checks=[];
+
+  const normalized=normalizeLookupText(token);
+  checks.push({
+    stage:"normalization",
+    input:String(token||""),
+    output:normalized,
+    passed:Boolean(normalized)
+  });
+
+  // Capitalization does not control dictionary matching. It is restored only
+  // after grammar and context choose the final translation.
+  checks.push({
+    stage:"capitalization",
+    input:String(token||""),
+    output:normalized,
+    passed:true
+  });
+
+  const direct=directEntryFor(normalized,source);
+  if(direct){
+    return {
+      entry:{...direct,__resolutionChecks:checks,__resolutionType:"exact"},
+      checks,
+      type:"exact",
+      correctedToken:null
+    };
+  }
+  checks.push({stage:"exact dictionary",input:normalized,passed:false});
+
+  if(allowDerived){
+    let derived=null;
+    if(source==="Asrydian / Asmonian"){
+      derived=derivedAsrydianVerbEntry(normalized)||
+        derivedTFormEntryFor(normalized,source);
+    }else if(source==="English"){
+      // Every English token receives both noun-plural and verb morphology
+      // analysis before it can be called unknown.
+      derived=derivedEnglishPluralEntry(normalized)||
+        derivedEnglishVerbEntry(normalized);
+    }
+
+    checks.push({
+      stage:"morphology / plural",
+      input:normalized,
+      passed:Boolean(derived),
+      output:derived
+        ? String(derived[source==="English"?"Asrydian / Asmonian":"English"]||"")
+        : ""
+    });
+
+    if(derived){
+      derived.__resolutionChecks=checks;
+      derived.__resolutionType="morphology";
+      return {entry:derived,checks,type:"morphology",correctedToken:null};
+    }
+  }
+
+  if(allowSpelling&&source==="English"){
+    const spelling=conservativeSpellingCandidate(normalized,source);
+    checks.push({
+      stage:"spelling",
+      input:normalized,
+      output:spelling?.token||"",
+      passed:Boolean(spelling)
+    });
+
+    if(spelling){
+      const corrected=resolveWordPipeline(spelling.token,source,{
+        allowDerived,
+        allowSpelling:false
+      });
+
+      if(corrected.entry){
+        corrected.entry={
+          ...corrected.entry,
+          __spellingCorrection:`${token} → ${spelling.token}`,
+          __resolutionChecks:[...checks,...(corrected.checks||[])],
+          __resolutionType:corrected.type==="exact"?"spelling":corrected.type
+        };
+        return {
+          entry:corrected.entry,
+          checks:corrected.entry.__resolutionChecks,
+          type:corrected.entry.__resolutionType,
+          correctedToken:spelling.token
+        };
+      }
+    }
+  }
+
+  checks.push({stage:"grammar classification",input:normalized,passed:false});
+  return {entry:null,checks,type:"unknown",correctedToken:null};
+}
+
+function exactEntryFor(token, source, options={allowDerived:true,allowSpelling:true}){
+  return resolveWordPipeline(token,source,options).entry;
 }
 
 function isSentenceStartToken(tokens, tokenIndex){
@@ -1897,6 +2096,8 @@ function buildGrammarTokenInfos(tokens,source,target){
       protected:isProtectedChatToken(token),
       entry,raw,
       role:grammarRoleForEntry(entry,raw),
+      checks:entry?.__resolutionChecks||[],
+      resolutionType:entry?.__resolutionType||(entry?"exact":"unknown"),
       translation:raw
     };
   });
@@ -2171,7 +2372,9 @@ function buildLiteralPhrase(text,source,target){
       grammar:infos.filter(info=>info.entry).map(info=>({
         token:info.token,
         role:info.role,
-        translation:info.translation
+        translation:info.translation,
+        resolutionType:info.resolutionType,
+        checks:info.checks
       }))
     };
   }
@@ -2198,6 +2401,9 @@ function buildLiteralPhrase(text,source,target){
       const correction=contractionCorrectionFor(token,source);
       if(correction&&normalizeLookupText(token)!==normalizeLookupText(correction)){
         autocorrections.push(`${token} → ${correction}`);
+      }
+      if(info.entry.__spellingCorrection){
+        autocorrections.push(info.entry.__spellingCorrection);
       }
 
       rendered.push(`<span class="known-word">${escapeHtml(info.translation)}</span>`);
@@ -2442,7 +2648,7 @@ function renderPhraseBuilder(q,source,target){
     /[\p{L}\p{M}0-9]/u.test(token)
   ).length;
 
-  if(wordCount<2 && !mainPreferences().debugMode){
+  if(wordCount<1){
     latestCombinedTranslation="";
     phraseBuilder.classList.add("hidden");
     phraseOutput.innerHTML="";
@@ -2473,7 +2679,7 @@ function renderPhraseBuilder(q,source,target){
     name:"Grammar Roles",
     detail:built.grammar?.length
       ? built.grammar.map(item=>
-          `${item.token} → ${item.role} → ${item.translation}${item.entry?.["Grammar / Form"] ? ` [${item.entry["Grammar / Form"]}]` : ""}`
+          `${item.token} → ${item.resolutionType||"exact"} → ${item.role} → ${item.translation}`
         ).join("\n")
       : "No recognized words to grammarize"
   });
@@ -3784,7 +3990,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 4.3</div>
+padding:6px 9px;font-size:12px;">Version 5.0</div>
 
 </body>
 </html>
