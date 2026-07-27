@@ -79,9 +79,9 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   padding-top:12px;
 }
 .unknown-word{
-  color:#ff3b4f !important;
-  background:rgba(255,59,79,.18);
-  border:1px solid rgba(255,59,79,.8);
+  color:#b42332;
+  background:#ffd9de;
+  border:1px solid rgba(220,53,69,.58);
   border-radius:7px;
   padding:1px 5px;
   text-decoration:none;
@@ -296,9 +296,9 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
 @media(max-width:760px){
   .phrase-output .unknown-word{
     display:inline-block !important;
-    color:#ff5263 !important;
-    background:rgba(255,59,79,.24) !important;
-    border:2px solid rgba(255,82,99,.95) !important;
+    color:#b42332;
+    background:#ffd9de;
+    border:1px solid rgba(220,53,69,.58);
     border-radius:7px;
     padding:2px 6px;
     font-weight:900;
@@ -306,7 +306,31 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
   }
 }
 
+
+.phrase-output .unknown-word{
+  color:#b42332;
+  border:1px solid rgba(220,53,69,.58);
+  background:#ffd9de;
+  border-radius:7px;
+  padding:1px 5px;
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;
+}
 </style>
+
+<style id="universal-unknown-style">
+.unknown-word,
+.phrase-output .unknown-word{
+  color:#b42332 !important;
+  background:#ffd9de !important;
+  border:1px solid rgba(220,53,69,.58) !important;
+  border-radius:7px;
+  padding:1px 5px;
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;
+}
+</style>
+
 </head>
 <body>
 <div class="container">
@@ -575,7 +599,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.2",
+  version: "5.3.1",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -883,7 +907,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.2"
+      example:"Manual connection test from Asrydian Translator Version 5.3.1"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -2772,6 +2796,32 @@ function applyMainPreferenceVisibility(){
   phraseNote.style.display=prefs.showNotes?"":"none";
 }
 
+
+function renderProcessedTranslationWithUnknowns(text,unknownWords){
+  const unknownKeys=new Set(
+    (unknownWords||[])
+      .map(word=>normalizeLookupText(word))
+      .filter(Boolean)
+  );
+
+  if(!unknownKeys.size){
+    return escapeHtml(text||"No translation");
+  }
+
+  return translationTokens(String(text||"")).map(token=>{
+    const key=normalizeLookupText(token);
+
+    if(
+      /[\p{L}\p{M}0-9]/u.test(token) &&
+      unknownKeys.has(key)
+    ){
+      return `<span class="unknown-word" title="Unknown word">${escapeHtml(token)}</span>`;
+    }
+
+    return escapeHtml(token);
+  }).join("");
+}
+
 function renderPhraseBuilder(q,source,target){
   const trimmed=String(q||"").trim();
 
@@ -2851,7 +2901,10 @@ function renderPhraseBuilder(q,source,target){
   phraseBuilder.classList.remove("hidden");
 
   phraseOutput.innerHTML=englishTarget
-    ? escapeHtml(processedPlain||"No translation")
+    ? renderProcessedTranslationWithUnknowns(
+        processedPlain||"No translation",
+        built.unknown||[]
+      )
     : (built.html||escapeHtml(processedPlain||"No translation"));
 
   if(built.pronunciation&&mainPreferences().showPronunciation){
@@ -4122,7 +4175,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.2</div>
+padding:6px 9px;font-size:12px;">Version 5.3.1</div>
 
 </body>
 </html>
