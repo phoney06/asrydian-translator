@@ -474,7 +474,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     <div class="lab-card">
       <h3>Engine Capabilities</h3>
       <div class="lab-output">
-        <span class="engine-badge">Bidirectional pronunciation matching</span>
+        <span class="engine-badge">Bidirectional pronunciation + noun/verb family matching</span>
         <span class="engine-badge">Unified word pipeline</span>
         <span class="engine-badge">Capitalization normalization</span>
         <span class="engine-badge">Conservative spelling</span>
@@ -599,7 +599,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.3.1",
+  version: "5.4",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -907,7 +907,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.3.1"
+      example:"Manual connection test from Asrydian Translator Version 5.4"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -1447,6 +1447,193 @@ function directEntryFor(token, source){
   }) || null;
 }
 
+
+// Related noun and verb forms may share an Asrydian stem even when only the
+// noun is stored in the sheet. Add future families here rather than adding
+// one-off checks throughout the resolver.
+const DERIVATIONAL_FAMILIES = [
+  {
+    englishNoun: "penalty",
+    englishVerb: "penalize",
+    asrydianNoun: "raisona",
+    asrydianVerbRoot: "raison",
+    pastClass: "NORMAL"
+  }
+];
+
+function derivationalFamilyForEnglish(value){
+  const normalized=normalizeLookupText(value);
+  return DERIVATIONAL_FAMILIES.find(family =>
+    normalized===family.englishNoun ||
+    normalized===family.englishVerb ||
+    normalized===englishThirdPersonSingular(family.englishVerb) ||
+    normalized===englishPresentParticiple(family.englishVerb) ||
+    normalized===englishPastTense(family.englishVerb)
+  ) || null;
+}
+
+function derivationalFamilyForAsrydian(value){
+  const normalized=normalizeLookupText(value);
+  return DERIVATIONAL_FAMILIES.find(family =>
+    normalized===family.asrydianNoun ||
+    normalized===family.asrydianVerbRoot ||
+    normalized===`${family.asrydianVerbRoot}t` ||
+    normalized===`${family.asrydianVerbRoot}eif` ||
+    normalized===`${family.asrydianVerbRoot}${
+      family.pastClass==="INA" ? "ina" : "a"
+    }`
+  ) || null;
+}
+
+function derivationalFamilyEntry(token,source){
+  const normalized=normalizeLookupText(token);
+
+  if(source==="English"){
+    const family=derivationalFamilyForEnglish(normalized);
+    if(!family)return null;
+
+    const nounEntry=directEntryFor(family.englishNoun,"English");
+    const base={
+      ...(nounEntry||{}),
+      Category: normalized===family.englishNoun ? "Noun" : "Verb",
+      Root: family.asrydianVerbRoot,
+      Notes:[
+        nounEntry?.Notes,
+        `Derived noun/verb family: ${family.englishNoun} ↔ ${family.englishVerb}`
+      ].filter(Boolean).join("; ")
+    };
+
+    if(normalized===family.englishNoun){
+      return {
+        ...base,
+        English:token,
+        "Asrydian / Asmonian":family.asrydianNoun,
+        "Grammar / Form":"Derivational-family noun",
+        __derivationalFamily:true
+      };
+    }
+    if(normalized===family.englishVerb){
+      return {
+        ...base,
+        English:token,
+        "Asrydian / Asmonian":family.asrydianVerbRoot,
+        "Grammar / Form":"Derived verb root from related noun",
+        __derivationalFamily:true
+      };
+    }
+    if(normalized===normalizeLookupText(englishThirdPersonSingular(family.englishVerb))){
+      return {
+        ...base,
+        English:token,
+        "Asrydian / Asmonian":`${family.asrydianVerbRoot}t`,
+        "Grammar / Form":"Derived third-person singular (-t)",
+        __derivedThirdPerson:true,
+        __derivationalFamily:true
+      };
+    }
+    if(normalized===normalizeLookupText(englishPresentParticiple(family.englishVerb))){
+      return {
+        ...base,
+        English:token,
+        "Asrydian / Asmonian":`${family.asrydianVerbRoot}eif`,
+        "Grammar / Form":"Derived ongoing form (-eif)",
+        __derivedProgressive:true,
+        __derivationalFamily:true
+      };
+    }
+    if(normalized===normalizeLookupText(englishPastTense(family.englishVerb))){
+      return {
+        ...base,
+        English:token,
+        "Asrydian / Asmonian":`${family.asrydianVerbRoot}${
+          family.pastClass==="INA" ? "ina" : "a"
+        }`,
+        "Grammar / Form":family.pastClass==="INA"
+          ? "Derived INA past (-ina)"
+          : "Derived normal past (-a)",
+        __derivedPast:true,
+        __derivationalFamily:true
+      };
+    }
+  }
+
+  if(source==="Asrydian / Asmonian"){
+    const family=derivationalFamilyForAsrydian(normalized);
+    if(!family)return null;
+
+    const nounEntry=directEntryFor(family.asrydianNoun,source);
+    const base={
+      ...(nounEntry||{}),
+      Root:family.asrydianVerbRoot,
+      Notes:[
+        nounEntry?.Notes,
+        `Derived noun/verb family: ${family.englishNoun} ↔ ${family.englishVerb}`
+      ].filter(Boolean).join("; "),
+      __derivationalFamily:true
+    };
+
+    if(normalized===family.asrydianVerbRoot){
+      return {
+        ...base,
+        English:family.englishVerb,
+        "Asrydian / Asmonian":token,
+        Category:"Verb",
+        "Grammar / Form":"Derived verb root from related noun"
+      };
+    }
+    if(normalized===`${family.asrydianVerbRoot}t`){
+      return {
+        ...base,
+        English:englishThirdPersonSingular(family.englishVerb),
+        "Asrydian / Asmonian":token,
+        Category:"Verb",
+        "Grammar / Form":"Derived third-person singular (-t)",
+        __derivedThirdPerson:true
+      };
+    }
+    if(normalized===`${family.asrydianVerbRoot}eif`){
+      return {
+        ...base,
+        English:englishPresentParticiple(family.englishVerb),
+        "Asrydian / Asmonian":token,
+        Category:"Verb",
+        "Grammar / Form":"Derived ongoing form (-eif)",
+        __derivedProgressive:true
+      };
+    }
+
+    const pastForm=`${family.asrydianVerbRoot}${
+      family.pastClass==="INA" ? "ina" : "a"
+    }`;
+    if(normalized===pastForm){
+      return {
+        ...base,
+        English:`${family.englishNoun} / ${englishPastTense(family.englishVerb)}`,
+        "Asrydian / Asmonian":token,
+        Category:"Noun / Verb",
+        "Grammar / Form":"Noun and derived past-form collision",
+        __derivedPast:true,
+        __derivationalCollision:{
+          noun:family.englishNoun,
+          verbPast:englishPastTense(family.englishVerb)
+        }
+      };
+    }
+
+    if(normalized===family.asrydianNoun){
+      return {
+        ...base,
+        English:family.englishNoun,
+        "Asrydian / Asmonian":token,
+        Category:"Noun",
+        "Grammar / Form":"Derivational-family noun"
+      };
+    }
+  }
+
+  return null;
+}
+
 function isVerbEntry(entry){
   const text = normalizeLookupText([
     entry?.Category, entry?.["Grammar / Form"], entry?.Notes
@@ -1826,13 +2013,18 @@ function resolveWordPipeline(token,source,options={}){
     passed:true
   });
 
-  const direct=directEntryFor(normalized,source);
+  const familyEntry=derivationalFamilyEntry(normalized,source);
+  const direct=familyEntry||directEntryFor(normalized,source);
   if(direct){
     const calculated=attachPronunciationCalculation(direct,source,token,checks);
     return {
-      entry:{...calculated,__resolutionChecks:checks,__resolutionType:"exact"},
+      entry:{
+        ...calculated,
+        __resolutionChecks:checks,
+        __resolutionType:familyEntry ? "derivational family" : "exact"
+      },
       checks,
-      type:"exact",
+      type:familyEntry ? "derivational family" : "exact",
       correctedToken:null
     };
   }
@@ -2365,6 +2557,40 @@ function contextualEnglishTranslation(entry, sourceToken, tokens, tokenIndex, so
   const normalizedSourceWord = normalizeLookupText(
     entry?.["Asrydian / Asmonian"] || sourceToken
   );
+
+  const collision=entry?.__derivationalCollision;
+  if(collision){
+    const previousInfo=previousWordToken(tokens,tokenIndex);
+    const previousEntry=previousInfo
+      ? exactEntryFor(previousInfo.token,source)
+      : null;
+    const previousEnglish=normalizeLookupText(
+      englishAliasOptions(previousEntry)[0] ||
+      previousEntry?.English ||
+      previousInfo?.token ||
+      ""
+    );
+
+    const verbAuxiliaries=new Set([
+      "am","is","are","was","were","be","been","being",
+      "get","gets","got","become","became"
+    ]);
+    const nounDeterminers=new Set([
+      "a","an","the","this","that","these","those",
+      "my","your","his","her","its","our","their","one"
+    ]);
+
+    if(verbAuxiliaries.has(previousEnglish)){
+      return collision.verbPast;
+    }
+    if(nounDeterminers.has(previousEnglish)){
+      return collision.noun;
+    }
+
+    // At sentence start or without decisive context, preserve both documented
+    // meanings instead of silently choosing the wrong one.
+    return `${collision.noun} / ${collision.verbPast}`;
+  }
 
   if(normalizedSourceWord === "mai"){
     return contextualMaiTranslation(tokens,tokenIndex);
@@ -4175,7 +4401,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.3.1</div>
+padding:6px 9px;font-size:12px;">Version 5.4</div>
 
 </body>
 </html>
