@@ -599,7 +599,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.4",
+  version: "5.4.1",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -907,7 +907,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.4"
+      example:"Manual connection test from Asrydian Translator Version 5.4.1"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -2739,10 +2739,10 @@ function buildLiteralPhrase(text,source,target){
   const exact=exactEntryFor(text,source);
 
   if(exact){
-    const exactInfo=infos.find(info=>info.entry);
-    const exactTranslation=exactInfo
-      ? exactInfo.translation
-      : String(exact[target]||"");
+    // Exact phrase entries must use the complete target-language phrase.
+    // Previously this selected the first recognized token from `infos`,
+    // which reduced "Good night" → "Feloen mers" to only "Feloen".
+    const exactTranslation=String(exact[target]||"");
 
     return {
       html:escapeHtml(exactTranslation),
@@ -4401,7 +4401,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.4</div>
+padding:6px 9px;font-size:12px;">Version 5.4.1</div>
 
 </body>
 </html>
