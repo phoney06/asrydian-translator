@@ -474,7 +474,7 @@ select{background:#0f172a;color:var(--text);border:1px solid var(--border);paddi
     <div class="lab-card">
       <h3>Engine Capabilities</h3>
       <div class="lab-output">
-        <span class="engine-badge">Bidirectional pronunciation + noun/verb family matching</span>
+        <span class="engine-badge">Universal number law + pronunciation + noun/verb family matching</span>
         <span class="engine-badge">Unified word pipeline</span>
         <span class="engine-badge">Capitalization normalization</span>
         <span class="engine-badge">Conservative spelling</span>
@@ -599,7 +599,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.4.1",
+  version: "5.5",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -907,7 +907,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.4.1"
+      example:"Manual connection test from Asrydian Translator Version 5.5"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -951,7 +951,33 @@ const LIVE_REFERENCE_TABS = {
 const grammarData = [{"Rule": "Plural / present-s ending", "English Form": "Plural nouns or third-person singular verbs / -s", "Asrydian Form": "-t", "Explanation": "Attach T for regular English plural nouns and present-tense verb forms such as says.", "Example": "Hammer → Hammers: Myolthde → Myolthdet; Say → Says: Umfer → Umfert"}, {"Rule": "Continuous ending", "English Form": "-ing", "Asrydian Form": "-eif", "Explanation": "Attach Eif to a verb root. Words that can function as either nouns or verbs, such as Cause, are checked as verb roots when an -ing/-eif form is used.", "Example": "Do → Doing: Lul → Luleif; Cause → Causing: Unes → Uneseif"}, {"Rule": "Agent/person ending", "English Form": "-er", "Asrydian Form": "-de", "Explanation": "Attach De to the word.", "Example": "Common → Commoner: Einusd → Einusdulde"}, {"Rule": "Past ending", "English Form": "-ed", "Asrydian Form": "-ina", "Explanation": "Attach Ina to the word.", "Example": "Learn → Learned: Luenskľ → Luenskľina"}];
 const pronunciationData = [{"Written Pattern": "S at the beginning or end of a word", "Sound": "S", "Rule": "Pronounced as a normal S sound."}, {"Written Pattern": "S inside a word", "Sound": "Sh", "Rule": "Pronounced as an SH sound."}, {"Written Pattern": "K next to E", "Sound": "Ch", "Rule": "The pair makes a CH sound."}, {"Written Pattern": "K next to L", "Sound": "C", "Rule": "The pair makes a C sound."}, {"Written Pattern": "’e", "Sound": "Silent", "Rule": "The ’e sequence is silent."}, {"Written Pattern": "ľ", "Sound": "Silent", "Rule": "The letter ľ is silent."}, {"Written Pattern": "G", "Sound": "Guh or Juh", "Rule": "The speaker may choose either pronunciation."}];
 const lessonsData = [{"Lesson": 1, "English": "Good morning Asmonia.", "Asrydian": "Feloen kľuthulaeif Asmonia"}, {"Lesson": 1, "English": "Good night Asmonia.", "Asrydian": "Feloen mers Asmonia"}, {"Lesson": 1, "English": "How are you?", "Asrydian": "Fliken tei gan?"}, {"Lesson": 1, "English": "I’m good.", "Asrydian": "Thye feloen."}, {"Lesson": 1, "English": "I’m okay, and you?", "Asrydian": "Thye byos, ta gan?"}, {"Lesson": 1, "English": "What are you doing?", "Asrydian": "Irel tei gan luleif?"}, {"Lesson": 1, "English": "Who can play in the tournament?", "Asrydian": "Ghelľ glatim halugen raiysa gona warthestal?"}, {"Lesson": 1, "English": "Pray to our Goddess Jazmine and God Jrock.", "Asrydian": "Esbe golrsi tif Mlorfia Gasmin’e ta Mlorfia Grok."}, {"Lesson": 1, "English": "I’ve brought in my recruit.", "Asrydian": "Thye kľrudai raisya reei ufola."}, {"Lesson": 1, "English": "I can play in the tournament, your majesty.", "Asrydian": "Thye glatim halugen raiysa gona warthestal, ganil floera."}, {"Lesson": 1, "English": "I finished my task, your majesty.", "Asrydian": "Thye breinolaina reei dentes, ganil floera."}, {"Lesson": 1, "English": "Thank you.", "Asrydian": "Klusda gan."}, {"Lesson": 1, "English": "You’re welcome.", "Asrydian": "Ganil nyels."}, {"Lesson": 1, "English": "Reminder to not talk in the chats during the hours of 12am–6am EST.", "Asrydian": "Glaidode golrsi maith hafa raisya gona wa’ekt ainieif gona roet ebof dekai rauthen kľuthulaeif nasa gonu kľuthulaeif EST."}, {"Lesson": 2, "English": "Hello.", "Asrydian": "Klibona."}, {"Lesson": 2, "English": "Goodbye.", "Asrydian": "Hofoen."}, {"Lesson": 2, "English": "Hi.", "Asrydian": "Klibo."}, {"Lesson": 2, "English": "Bye.", "Asrydian": "Hofe."}, {"Lesson": 2, "English": "Hey, how are you today?", "Asrydian": "Safor, fliken tei gan fali?"}, {"Lesson": 2, "English": "Good morning.", "Asrydian": "Feloen kľuthulaeif."}, {"Lesson": 2, "English": "Good night.", "Asrydian": "Feloen mers."}, {"Lesson": 2, "English": "Good day!", "Asrydian": "Feloen fali!"}, {"Lesson": 2, "English": "Yes.", "Asrydian": "Hestho."}, {"Lesson": 2, "English": "No.", "Asrydian": "Mai."}, {"Lesson": 2, "English": "I understand.", "Asrydian": "Thye otolurthel."}, {"Lesson": 2, "English": "Understood.", "Asrydian": "Rarendomen."}, {"Lesson": 2, "English": "I don’t understand.", "Asrydian": "Thye lulmai otolurthel."}, {"Lesson": 2, "English": "Of course.", "Asrydian": "Ebof nelis."}, {"Lesson": 2, "English": "No problem.", "Asrydian": "Thye yenbo."}, {"Lesson": 2, "English": "Maybe.", "Asrydian": "Ofeig."}, {"Lesson": 2, "English": "Sure.", "Asrydian": "Gakľul."}, {"Lesson": 2, "English": "Okay.", "Asrydian": "Byos."}, {"Lesson": 3, "English": "Tournament.", "Asrydian": "Warthestal"}, {"Lesson": 3, "English": "Gold.", "Asrydian": "Klaga / Kalga"}];
-const numberRulesData = [{"Unit": "Hundreds", "Range": "100–999", "Unit Word": "Thradek", "Formation Pattern": "(1–9) + Thradek", "Notes": "100 = Thradek; larger hundreds use a number before the unit."}, {"Unit": "Thousands", "Range": "1,000–999,999", "Unit Word": "Kentrafa", "Formation Pattern": "(number under 1,000) + Kentrafa", "Notes": "Largest unit is spoken first."}, {"Unit": "Millions", "Range": "1,000,000–999,999,999", "Unit Word": "Mireth", "Formation Pattern": "(number under 1,000) + Mireth", "Notes": "Largest unit is spoken first."}, {"Unit": "Billions", "Range": "1,000,000,000–999,999,999,999", "Unit Word": "Thrathethal", "Formation Pattern": "(number under 1,000) + Thrathethal", "Notes": "Largest unit is spoken first."}, {"Unit": "Trillions", "Range": "1,000,000,000,000+", "Unit Word": "Thrathethalen", "Formation Pattern": "(number under 1,000) + Thrathethalen", "Notes": "Largest unit is spoken first."}, {"Unit": "Universal Large Number Law", "Range": "", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "1", "Range": "Always speak the largest unit first.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "2", "Range": "Never reverse the order.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "3", "Range": "Never use a word for “and” inside a number.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "4", "Range": "Each large unit behaves like a multiplier.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}, {"Unit": "5", "Range": "Asrydian numbers are written in letter form only, not with digits.", "Unit Word": "", "Formation Pattern": "", "Notes": ""}];
+const numberRulesData = [
+{"Unit":"Universal Large Number Law","Range":"","Unit Word":"","Formation Pattern":"Largest unit first; never reverse; no 'and'; large units are multipliers; Asrydian outputs letters only.","Notes":"Official rule"},
+{"Unit":"Zero","Range":"0","Unit Word":"Maiena","Formation Pattern":"","Notes":""},
+{"Unit":"One / First","Range":"1","Unit Word":"Ena","Formation Pattern":"","Notes":""},
+{"Unit":"Two / Second","Range":"2","Unit Word":"Rauthen","Formation Pattern":"","Notes":""},
+{"Unit":"Three / Third","Range":"3","Unit Word":"Kelai","Formation Pattern":"","Notes":""},
+{"Unit":"Four / Fourth","Range":"4","Unit Word":"Kľor","Formation Pattern":"","Notes":""},
+{"Unit":"Five / Fifth","Range":"5","Unit Word":"Fais","Formation Pattern":"","Notes":""},
+{"Unit":"Six / Sixth","Range":"6","Unit Word":"Gonu","Formation Pattern":"","Notes":""},
+{"Unit":"Seven / Seventh","Range":"7","Unit Word":"Rethai","Formation Pattern":"","Notes":""},
+{"Unit":"Eight / Eighth","Range":"8","Unit Word":"Othei","Formation Pattern":"","Notes":""},
+{"Unit":"Nine / Ninth","Range":"9","Unit Word":"Thesrai","Formation Pattern":"","Notes":""},
+{"Unit":"Ten / Tenth","Range":"10","Unit Word":"Dekai","Formation Pattern":"","Notes":""},
+{"Unit":"Twenty / Twentieth","Range":"20","Unit Word":"Rauthalen","Formation Pattern":"","Notes":""},
+{"Unit":"Thirty / Thirtieth","Range":"30","Unit Word":"Kelalen","Formation Pattern":"","Notes":""},
+{"Unit":"Forty / Fortieth","Range":"40","Unit Word":"Kľoralen","Formation Pattern":"","Notes":"Accepts source spelling Fourty/Fourtieth"},
+{"Unit":"Fifty / Fiftieth","Range":"50","Unit Word":"Faisen","Formation Pattern":"","Notes":""},
+{"Unit":"Sixty","Range":"60","Unit Word":"Goneth","Formation Pattern":"","Notes":""},
+{"Unit":"Seventy","Range":"70","Unit Word":"Rethalen","Formation Pattern":"","Notes":""},
+{"Unit":"Eighty","Range":"80","Unit Word":"Othalen","Formation Pattern":"","Notes":""},
+{"Unit":"Ninety","Range":"90","Unit Word":"Thesralen","Formation Pattern":"","Notes":""},
+{"Unit":"Hundred","Range":"100–999","Unit Word":"Thradek","Formation Pattern":"100 = Thradek; 200+ = multiplier + Thradek","Notes":""},
+{"Unit":"Thousand","Range":"1,000–999,999","Unit Word":"Kentrafa","Formation Pattern":"number group + Kentrafa","Notes":""},
+{"Unit":"Million","Range":"1,000,000–999,999,999","Unit Word":"Mireth","Formation Pattern":"number group + Mireth","Notes":""},
+{"Unit":"Billion","Range":"1,000,000,000–999,999,999,999","Unit Word":"Thrathethal","Formation Pattern":"number group + Thrathethal","Notes":""},
+{"Unit":"Trillion","Range":"1,000,000,000,000+","Unit Word":"Thrathethalen","Formation Pattern":"number group + Thrathethalen","Notes":""}
+]
 const reviewData = [{"English / Topic": "Okay", "Version A": "Byos", "Version B": "Boys", "Reason": "Likely a typo in the newer list; Lesson 2 uses Byos."}, {"English / Topic": "Play", "Version A": "Halugen", "Version B": "Halujen", "Reason": "New vocabulary and lessons use Halugen."}, {"English / Topic": "Gold", "Version A": "Klaga", "Version B": "Kalga", "Reason": "Common-word list uses Klaga; color list uses Kalga."}, {"English / Topic": "Who", "Version A": "Gehlľ", "Version B": "Ghelľ", "Reason": "Dictionary uses Gehlľ; Lesson 1 uses Ghelľ."}, {"English / Topic": "To", "Version A": "Golrsi", "Version B": "Golrsi", "Reason": "Dictionary uses Golrsi; long reminder phrase uses Golrsi."}, {"English / Topic": "In", "Version A": "Raisya", "Version B": "Raiysa", "Reason": "Dictionary uses Raisya; lesson sentence uses Raiysa."}, {"English / Topic": "Be", "Version A": "Frukľ", "Version B": "Wainkľaf", "Reason": "Two translations may represent different grammatical contexts."}, {"English / Topic": "Home", "Version A": "Yegelnora", "Version B": "Thaluseni", "Reason": "Two translations may represent different meanings or contexts."}, {"English / Topic": "Gold lesson entry", "Version A": "Gold", "Version B": "No translation supplied", "Reason": "Lesson 3 only listed the English word; both known spellings are noted."}];
 
 let direction = "en-as";
@@ -2232,7 +2258,25 @@ const NUMBER_WORD_FORMS = {
   "nine":{cardinal:"nine",ordinal:"ninth"},
   "ninth":{cardinal:"nine",ordinal:"ninth"},
   "ten":{cardinal:"ten",ordinal:"tenth"},
-  "tenth":{cardinal:"ten",ordinal:"tenth"}
+  "tenth":{cardinal:"ten",ordinal:"tenth"},
+  "twenty":{cardinal:"twenty",ordinal:"twentieth"},
+  "twentieth":{cardinal:"twenty",ordinal:"twentieth"},
+  "thirty":{cardinal:"thirty",ordinal:"thirtieth"},
+  "thirtieth":{cardinal:"thirty",ordinal:"thirtieth"},
+  "forty":{cardinal:"forty",ordinal:"fortieth"},
+  "fourty":{cardinal:"forty",ordinal:"fortieth"},
+  "fortieth":{cardinal:"forty",ordinal:"fortieth"},
+  "fourtieth":{cardinal:"forty",ordinal:"fortieth"},
+  "fifty":{cardinal:"fifty",ordinal:"fiftieth"},
+  "fiftieth":{cardinal:"fifty",ordinal:"fiftieth"},
+  "sixty":{cardinal:"sixty",ordinal:"sixtieth"},
+  "sixtieth":{cardinal:"sixty",ordinal:"sixtieth"},
+  "seventy":{cardinal:"seventy",ordinal:"seventieth"},
+  "seventieth":{cardinal:"seventy",ordinal:"seventieth"},
+  "eighty":{cardinal:"eighty",ordinal:"eightieth"},
+  "eightieth":{cardinal:"eighty",ordinal:"eightieth"},
+  "ninety":{cardinal:"ninety",ordinal:"ninetieth"},
+  "ninetieth":{cardinal:"ninety",ordinal:"ninetieth"}
 };
 
 function numberFormsForEntry(entry){
@@ -2733,7 +2777,104 @@ function translationTokens(text){
   ) || [];
 }
 
-function buildLiteralPhrase(text,source,target){
+
+function numberAwareEnglishPhrase(text,target){
+  if(target!=="Asrydian / Asmonian")return null;
+
+  const sourceText=String(text||"");
+  const written=extractNumberPhrases(sourceText,"english");
+  const digitRegex=/\d[\d,]*/g;
+  const digitResults=[];
+  let digitMatch;
+
+  while((digitMatch=digitRegex.exec(sourceText))){
+    // Ignore digits already inside a written-number phrase.
+    if(written.some(item=>digitMatch.index>=item.start && digitMatch.index<item.end))continue;
+    try{
+      digitResults.push({
+        phrase:digitMatch[0],
+        value:BigInt(digitMatch[0].replace(/,/g,"")),
+        start:digitMatch.index,
+        end:digitRegex.lastIndex,
+        digits:true
+      });
+    }catch(_){}
+  }
+
+  const results=[...written,...digitResults].sort((a,b)=>a.start-b.start);
+  if(!results.length)return null;
+
+  const rendered=[],plain=[],unknown=[],autocorrections=[],grammar=[];
+  let cursor=0;
+
+  const appendLiteral=segment=>{
+    if(!segment)return;
+    const built=buildLiteralPhrase(segment,"English",target,true);
+    rendered.push(built.html||escapeHtml(built.plain||segment));
+    plain.push(built.plain||segment);
+    unknown.push(...(built.unknown||[]));
+    autocorrections.push(...(built.autocorrections||[]));
+    grammar.push(...(built.grammar||[]));
+  };
+
+  for(let i=0;i<results.length;i++){
+    const result=results[i];
+    if(result.start<cursor)continue;
+
+    appendLiteral(sourceText.slice(cursor,result.start));
+
+    const asrydian=numberToAsrydianWords(result.value);
+    rendered.push(`<span class="known-word">${escapeHtml(asrydian)}</span>`);
+    plain.push(asrydian);
+    grammar.push({
+      token:result.phrase,
+      role:"number",
+      translation:asrydian,
+      resolutionType:"Universal Large Number Law"
+    });
+
+    cursor=result.end;
+
+    // If written words are immediately followed by the same number in
+    // parentheses, consume the parenthetical digits as duplicate notation.
+    // Asrydian itself never outputs Arabic digits.
+    if(!result.digits){
+      const tail=sourceText.slice(cursor);
+      const duplicate=tail.match(/^\s*\(\s*([\d,]+)\s*\)/);
+      if(duplicate){
+        try{
+          const duplicateValue=BigInt(duplicate[1].replace(/,/g,""));
+          if(duplicateValue===result.value){
+            cursor+=duplicate[0].length;
+          }
+        }catch(_){}
+      }
+    }
+  }
+
+  appendLiteral(sourceText.slice(cursor));
+
+  return {
+    html:rendered.join(""),
+    plain:plain.join("")
+      .replace(/\s+([,.;:!?])/g,"$1")
+      .replace(/,{2,}/g,",")
+      .replace(/,([^\s])/g,", $1"),
+    unknown,
+    autocorrections,
+    exact:false,
+    pronunciation:"",
+    grammar,
+    __numberAware:true
+  };
+}
+
+function buildLiteralPhrase(text,source,target,skipNumberEngine=false){
+  if(!skipNumberEngine && source==="English" && target==="Asrydian / Asmonian"){
+    const numberBuilt=numberAwareEnglishPhrase(text,target);
+    if(numberBuilt)return numberBuilt;
+  }
+
   const tokens=translationTokens(text);
   const infos=grammarizePhraseTokens(tokens,source,target);
   const exact=exactEntryFor(text,source);
@@ -3808,42 +3949,34 @@ function numberValueFromEnglishLabel(label){
 }
 
 function buildAsrydianNumberMaps(){
+  // Official Universal Large Number Law. Number calculation must not depend
+  // on whether individual number rows happen to exist in the live dictionary.
+  const official = [
+    [0n,"Maiena"],[1n,"Ena"],[2n,"Rauthen"],[3n,"Kelai"],[4n,"Kľor"],
+    [5n,"Fais"],[6n,"Gonu"],[7n,"Rethai"],[8n,"Othei"],[9n,"Thesrai"],
+    [10n,"Dekai"],[11n,"Dekai ena"],[12n,"Dekai rauthen"],
+    [13n,"Dekai kelai"],[14n,"Dekai kľor"],[15n,"Dekai fais"],
+    [16n,"Dekai gonu"],[17n,"Dekai rethai"],[18n,"Dekai othei"],
+    [19n,"Dekai thesrai"],[20n,"Rauthalen"],[30n,"Kelalen"],
+    [40n,"Kľoralen"],[50n,"Faisen"],[60n,"Goneth"],[70n,"Rethalen"],
+    [80n,"Othalen"],[90n,"Thesralen"],[100n,"Thradek"],
+    [1000n,"Kentrafa"],[1000000n,"Mireth"],
+    [1000000000n,"Thrathethal"],[1000000000000n,"Thrathethalen"]
+  ];
+
   const asToValue = new Map();
   const valueToAs = new Map();
 
-  dictionary.forEach(entry => {
-    const asrydian = String(entry["Asrydian / Asmonian"] || "").trim();
-    if(!asrydian) return;
-
-    const english = cardinalEnglishOption(entry);
-    const value = numberValueFromEnglishLabel(english);
-    if(value === null) return;
-
-    entryAliases(asrydian).forEach(alias => {
-      asToValue.set(normalizeLookupText(alias), value);
-    });
-
-    if(!valueToAs.has(value.toString())){
-      valueToAs.set(value.toString(), asrydian);
+  official.forEach(([value,word])=>{
+    valueToAs.set(value.toString(),word);
+    // Multiword 11–19 are generated as phrases; their component words are
+    // already represented by 10 + 1–9 in the parser.
+    if(!word.includes(" ")){
+      asToValue.set(normalizeLookupText(word),value);
     }
   });
 
-  const fallbacks = {
-    "100":"Thradek",
-    "1000":"Kentrafa",
-    "1000000":"Mireth",
-    "1000000000":"Thrathethal",
-    "1000000000000":"Thrathethalen"
-  };
-
-  Object.entries(fallbacks).forEach(([value, word]) => {
-    if(!valueToAs.has(value)) valueToAs.set(value, word);
-    if(!asToValue.has(normalizeLookupText(word))){
-      asToValue.set(normalizeLookupText(word), BigInt(value));
-    }
-  });
-
-  return {asToValue, valueToAs};
+  return {asToValue,valueToAs};
 }
 
 function parseAsrydianNumber(text){
@@ -4401,7 +4534,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.4.1</div>
+padding:6px 9px;font-size:12px;">Version 5.5</div>
 
 </body>
 </html>
