@@ -599,7 +599,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.5",
+  version: "5.5.1",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -907,7 +907,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.5"
+      example:"Manual connection test from Asrydian Translator Version 5.5.1"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -2809,12 +2809,34 @@ function numberAwareEnglishPhrase(text,target){
 
   const appendLiteral=segment=>{
     if(!segment)return;
-    const built=buildLiteralPhrase(segment,"English",target,true);
-    rendered.push(built.html||escapeHtml(built.plain||segment));
-    plain.push(built.plain||segment);
-    unknown.push(...(built.unknown||[]));
-    autocorrections.push(...(built.autocorrections||[]));
-    grammar.push(...(built.grammar||[]));
+
+    // Preserve whitespace at number/literal boundaries explicitly.
+    // Exact-entry lookup normalizes surrounding whitespace, so translating a
+    // segment such as " for" could previously return only "Thren" and drop
+    // the leading space, producing merged output such as "EnaThren".
+    const boundary=String(segment).match(/^(\s*)([\s\S]*?)(\s*)$/);
+    const leading=boundary?.[1]||"";
+    const core=boundary?.[2]||"";
+    const trailing=boundary?.[3]||"";
+
+    if(leading){
+      rendered.push(escapeHtml(leading));
+      plain.push(leading);
+    }
+
+    if(core){
+      const built=buildLiteralPhrase(core,"English",target,true);
+      rendered.push(built.html||escapeHtml(built.plain||core));
+      plain.push(built.plain||core);
+      unknown.push(...(built.unknown||[]));
+      autocorrections.push(...(built.autocorrections||[]));
+      grammar.push(...(built.grammar||[]));
+    }
+
+    if(trailing){
+      rendered.push(escapeHtml(trailing));
+      plain.push(trailing);
+    }
   };
 
   for(let i=0;i<results.length;i++){
@@ -4534,7 +4556,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.5</div>
+padding:6px 9px;font-size:12px;">Version 5.5.1</div>
 
 </body>
 </html>
