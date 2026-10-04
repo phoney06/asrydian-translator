@@ -599,7 +599,7 @@ let dictionary = [];
 
 // VERSION 4.0 DATA-DRIVEN LANGUAGE ENGINE
 const ASRYDIAN_ENGINE = {
-  version: "5.5.2",
+  version: "5.5.3",
   morphology: {
     thirdPersonOrPlural: { english:["s","es","ies"], asrydian:"t" },
     continuous: { english:"ing", asrydian:"eif" },
@@ -907,7 +907,7 @@ function setupLanguageLab(){
     const ok=await sendMissingTranslation({
       word:"translator-backlog-test",
       direction:"System Test",
-      example:"Manual connection test from Asrydian Translator Version 5.5.2"
+      example:"Manual connection test from Asrydian Translator Version 5.5.3"
     });
     alert(ok
       ?"Shared backlog connection succeeded. A test row was created or updated."
@@ -2105,6 +2105,24 @@ function resolveWordPipeline(token,source,options={}){
       derived.__resolutionType="morphology";
       return {entry:derived,checks,type:"morphology",correctedToken:null};
     }
+  }
+
+  // Cross-language exact-token guard. If an English-side token is actually
+  // an exact Asrydian dictionary spelling (for example Yuto = Busy), do not
+  // let English pronunciation/fuzzy matching reinterpret it as a different
+  // English word such as Auto. Keeping the literal token unchanged makes a
+  // subsequent direction swap resolve the authoritative Asrydian entry.
+  const exactOtherLanguage = source === "English"
+    ? directEntryFor(normalized,"Asrydian / Asmonian")
+    : null;
+  if(exactOtherLanguage){
+    checks.push({
+      stage:"cross-language exact guard",
+      input:normalized,
+      output:String(exactOtherLanguage["Asrydian / Asmonian"]||normalized),
+      passed:true
+    });
+    return {entry:null,checks,type:"wrong-direction exact",correctedToken:null};
   }
 
   // Written spelling is not the only valid route to a root. Compare the
@@ -4578,7 +4596,7 @@ loadLiveDictionary();
 
 <div style="position:fixed;right:10px;bottom:10px;z-index:9999;
 background:#111827;color:#d1d5db;border:1px solid #374151;border-radius:8px;
-padding:6px 9px;font-size:12px;">Version 5.5.2</div>
+padding:6px 9px;font-size:12px;">Version 5.5.3</div>
 
 </body>
 </html>
